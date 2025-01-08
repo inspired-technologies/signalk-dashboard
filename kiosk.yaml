@@ -1,0 +1,15 @@
+general:
+  kiosk-mode: full
+  autofit: true
+  lxde: false
+  lxde-home: /home/pi
+  scale-factor: 1.0
+
+target:
+  login-method: local
+  username: <REPLACE-WITH-USER>
+  password: <REPLACE-WITH-PWD>
+  playlist: false
+  URL: http://fluxpi:3000/d/signalk-influxdb/signalk-board-influx?orgId=1&from=now-3h&to=now&timezone=browser&refresh=20s&kiosk
+  ignore-certificate-errors: false
+
