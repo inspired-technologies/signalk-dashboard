@@ -20,6 +20,7 @@ const convert = require("./skunits")
 let initialized = false;
 let overwriteTimeWithNow = false;
 let metrics = []
+let descriptions = []
 let unsubscribes = [
   influx.flush
 ]
@@ -108,7 +109,8 @@ module.exports = (app) => {
         organization: settings.influx.org,
         bucket: settings.influx.signalk,
         cacheDir: app.getDataDirPath(),
-        frequency: settings.upload.frequency
+        frequency: settings.upload.frequency,
+        retention: settings.influx.retention
       }
       const influxDB = influx.login({
         url: settings.influx.uri,         // get from options
@@ -139,7 +141,9 @@ module.exports = (app) => {
               app.debug (`Uploading ${metrics.length} data points to Influx`)
               if (metrics.length !== 0) {
                   influx.post(influxDB, metrics, influxConfig, debug)
-              }
+                  metrics.forEach(m => descriptions.push(m))
+                }
+              updates["descriptions"] = DateTime.utc().toMillis()
               metrics = []
               clearInterval(timer); 
 
@@ -184,6 +188,13 @@ module.exports = (app) => {
                         const values = !influxConfig.valueConfig[u.values[0].path] ? u.values[0].value : 
                             convert.toTarget(influxConfig.valueConfig[u.values[0].path].split('|>')[0], u.values[0].value, influxConfig.valueConfig[u.values[0].path].split('|>')[1]).value
                         let timestamp = overwriteTimeWithNow ? DateTime.utc() : DateTime.fromISO(u.timestamp).toUTC()
+                        // decide on descriptions to be updated
+                        if (initialized && descriptions.length>0 && updateVal("descriptions", timestamp.toMillis(), 
+                            influxConfig.retention*3600*1000-2*influxConfig.frequency*1000))
+                            {
+                              descriptions.forEach(d => metrics.push(d))
+                              updates["descriptions"] = DateTime.utc().toMillis()                      
+                            }
                         // decide on metrics to be recorded
                         if (initialized && values!==null && updateVal(path, timestamp.toMillis(), 1000))
                         {
@@ -318,6 +329,12 @@ module.exports = (app) => {
                   title: 'Telegraf Metrics Bucket',
                   description: 'v2.x: [bucket]; v1.11.x: [database/retentionpolicy]',
                   default: 'infra_metrics'
+              },
+              retention: {
+                  type: 'number',
+                  title: 'SignalK Bucket Retention',
+                  description: 'Configured retention period in hours',
+                  default: 24
               }
             },
           },

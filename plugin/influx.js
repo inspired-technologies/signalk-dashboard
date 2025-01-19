@@ -24,8 +24,9 @@ const cache = require('./cache')
 let log
 let cacheDir = ''
 let cacheBuffer = []
+
 function buffer(metrics) {
-    cacheBuffer = metrics
+    metrics.forEach(m => cacheBuffer.push(m))
 }
 
 function flush(metrics) {
@@ -158,7 +159,7 @@ function post (influxdb, metrics, config, log) {
         .close()
         .then(() => {
             log(measurements)
-            /* cacheResult = cache.load(config.cacheDir, log) 
+            cacheResult = cache.load(config.cacheDir, log) 
             if (cacheResult === false) {
                 return
             }
@@ -177,18 +178,18 @@ function post (influxdb, metrics, config, log) {
                     points.push(point)
                 }) 
                 post(influxdb, points, config, log)
-            } */
+            }
         })
         .catch(err => {
             // Handle errors
-            // cache.push(cacheBuffer, config.cacheDir, log)
-            // cacheBuffer = []
+            cache.push(cacheBuffer, config.cacheDir, log)
+            cacheBuffer = []
             log(`Metrics not written due to ${err.message}`);
-            /* const cacheResult = cache.load(config.cacheDir, log)
+            const cacheResult = cache.load(config.cacheDir, log)
             if (cacheResult !== false) {
                 log(`${cacheResult.length} files cached`)
-            } */
-    })
+            }
+        })
 }
  
 function format (path, values, timestamp, skSource) {
