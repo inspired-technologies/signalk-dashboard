@@ -1,0 +1,32 @@
+{
+  "name": "signalk-dashboard",
+  "version": "0.1.0",
+  "description": "Server plugin & Grafana dashboard for SignalK data",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \\\"Error: no test specified\\\" && exit 1",
+    "debug": "node --inspect-brk=192.168.0.97:9229 /usr/lib/node_modules/signalk-server/bin/signalk-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inspired-technologies/signalk-dashboard.git"
+  },
+  "keywords": [
+    "signalk",
+    "signalk-node-server-plugin",
+    "signalk-category-instruments"
+  ],
+  "author": "Inspired Technologies",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/inspired-technologies/signalk-dashboard/issues"
+  },
+  "homepage": "https://github.com/inspired-technologies/signalk-dashboard#readme",
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.35.0",
+    "@influxdata/influxdb-client-apis": "^1.35.0",
+    "@signalk/signalk-schema": "^1.7.2",
+    "debug": "^4.4.0",
+    "luxon": "^3.5.0"
+  }
+}
