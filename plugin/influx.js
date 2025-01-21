@@ -204,6 +204,35 @@ function format (path, values, timestamp, skSource) {
     const skPath = path.split('.')
 
     switch (skPath.length) {
+        case 6:
+            // extended - use double tagging
+            switch (typeof values) {
+                case 'string':
+                    point = new Point(skPath[4])
+                    .tag(skPath[0], skPath[1])
+                    .tag(skPath[2], skPath[3])
+                    .stringField(skPath[5], values)    
+                    break;
+                case 'object':
+                    point = new Point(skPath[4])
+                    .tag(skPath[0], skPath[1])
+                    .tag(skPath[2], skPath[3])
+                    .stringField(skPath[5], JSON.stringify(values))  
+                    break;
+                case 'boolean':
+                    point = new Point(skPath[4])
+                    .tag(skPath[0], skPath[1])
+                    .tag(skPath[2], skPath[3])
+                    .booleanField(skPath[5], values)
+                    break;
+                default:
+                    point = new Point(skPath[4])
+                    .tag(skPath[0], skPath[1])
+                    .tag(skPath[2], skPath[3])
+                    .floatField(skPath[5], values)
+                    break;
+            }
+            break;
         case 5:
             // extended - use double tagging
             switch (typeof values) {

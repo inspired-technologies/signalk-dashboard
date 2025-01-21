@@ -88,11 +88,11 @@ module.exports = (app) => {
           metrics.push(metric)
       })
       settings.descriptions.forEach(d => {
-        let path = `label.${d.measurement}.description.${d.label}`
+        let path = `label.${d.label}.description.${d.measurement}`
         let metric = influx.format(`${path}`, d.field, DateTime.utc(), '')
         if (metric!==null)
           metrics.push(metric)
-        path = `label.${d.measurement}.${d.label}.description`
+        path = `type.${d.measurement}.label.${d.label}.description`
         metric = influx.format(`${path}.min`, d.min, DateTime.utc(), '')
         if (typeof d.min==='number' && metric!==null)
           metrics.push(metric)
@@ -201,9 +201,9 @@ module.exports = (app) => {
                             updates[path] = timestamp.toMillis()
                             if (influxConfig.valueConfig[u.values[0].path] && influxConfig.valueConfig[u.values[0].path].split('|>')[1]==='latLng') {
                               const metric = influx.format(path, JSON.stringify(values), timestamp, source(u))
-                              const longitude = influx.format(path+'.lon', values[0], timestamp, source(u))
-                              const latitude = influx.format(path+'.lat', values[1], timestamp, source(u))
-                              if (metric!==null && latitude!==null && longitude!==null) {
+                              const latitude = influx.format(path+'.lat', values[0], timestamp, source(u))
+                              const longitude = influx.format(path+'.lon', values[1], timestamp, source(u))
+                            if (metric!==null && latitude!==null && longitude!==null) {
                                 metrics.push(metric)
                                 metrics.push(latitude)
                                 metrics.push(longitude)
