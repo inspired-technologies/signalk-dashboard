@@ -17,7 +17,9 @@ const { getSourceId } = require('@signalk/signalk-schema')
 const path = require('path')
 const influx = require('./influx');
 const convert = require("./skunits")
+const grafana = require('./grafana');
 let initialized = false;
+let kiosk = false;
 let overwriteTimeWithNow = false;
 let metrics = []
 let descriptions = []
@@ -217,6 +219,8 @@ module.exports = (app) => {
                     })
                 }
               );
+              if (kiosk) 
+                grafana.check(grafana.launch, app.setPluginStatus)
               app.setPluginStatus('Started');
               app.debug('Plugin started');
             }, 5000, debug);        
@@ -229,6 +233,7 @@ module.exports = (app) => {
           return false
         }
       })
+      kiosk = grafana.init(settings.grafana, debug) && settings.grafana.autostart
       // init path configuration          
       influxConfig.pathConfig = {}
       influxConfig.valueConfig = {}
@@ -338,6 +343,70 @@ module.exports = (app) => {
               }
             },
           },
+          grafana: {
+            type: "object",
+            title: "Grafana Configuration",
+            required: ['autostart'],
+            properties: {
+              autostart: {
+                type: 'boolean',
+                title: 'Grafana Kiosk',
+                description: 'launch grafana kiosk with plugin start',
+                default: false
+              },
+              launch: {
+                type: "object",
+                title: "Launch Configuration",
+                // required: ['command'],
+                properties: {
+                  command: {
+                    type: 'string',
+                    title: 'Launch command',
+                    description: 'base command: chromium-borwser or grafana-kiosk',
+                    enum: ["chromium-browser", "grafana-kiosk"],
+                    default: ''
+                  },                  
+                  remote: {
+                    type: 'string',
+                    title: 'Remote command',
+                    description: 'remote execution, pwd-free login required',
+                    default: ''
+                  }, 
+                  params: {
+                    type: 'string',
+                    title: 'Configuration params',
+                    description: 'command params resp. full path to config-file',
+                    default: ''
+                  },                    
+                }
+              },
+              dashboard: {
+                type: "object",
+                title: "Launch Configuration",
+                required: ['idle'],
+                properties: {
+                  server: {
+                    type: 'string',
+                    title: 'Grafana Server',
+                    description: 'URI of the Grafana-server',
+                    default: ''
+                  },
+                  idle: {
+                    type: 'string',
+                    title: 'Idle dashboard',
+                    description: 'id of the default dashboard, eg. signalk-dashboard-idle',
+                    default: ''
+                  },
+                  params: {
+                    type: 'string',
+                    title: 'Dashboard params',
+                    description: 'configuration params on dashboard launch',
+                    default: ''
+                  },
+                }
+              }
+            },
+          },
           descriptions: {
             type: 'array',
             default: [],
@@ -382,7 +451,7 @@ module.exports = (app) => {
                 },
               }
             }
-          }
+          },
       }
     }
   };
