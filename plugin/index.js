@@ -18,9 +18,11 @@ const path = require('path')
 const influx = require('./influx');
 const convert = require("./skunits")
 const grafana = require('./grafana');
+const NAVSTATE = 'navigation.state'
 let initialized = false;
 let kiosk = false;
 let overwriteTimeWithNow = false;
+let currentState
 let metrics = []
 let descriptions = []
 let unsubscribes = [
@@ -152,11 +154,18 @@ module.exports = (app) => {
               // Restart time for uploading to influx
               timer = setInterval(() => {
                 app.debug (`Sending ${metrics.length} data points to be uploaded to influx`)
+                // write to influx
                 if (metrics.length !== 0) {
                     influx.post(influxDB, metrics, influxConfig, app.debug)
                     influx.buffer(metrics)
                     metrics = []
                 }
+                // trigger board switch
+                let state = app.getSelfPath(NAVSTATE).value
+                if (currentState && currentState !== state)
+                    grafana.next(state, () => {
+                      currentState = state
+                    })
               }, influxConfig.frequency*1000)
               app.debug (`Interval started, upload frequency: ${influxConfig.frequency}s`)
               
@@ -198,7 +207,7 @@ module.exports = (app) => {
                               updates["descriptions"] = DateTime.utc().toMillis()                      
                             }
                         // decide on metrics to be recorded
-                        if (initialized && values!==null && updateVal(path, timestamp.toMillis(), 1000))
+                        if (initialized && values!==null && updateVal(path, timestamp.toMillis(), 1000) && influxConfig.pathConfig[path]!=='ignore')
                         {
                             updates[path] = timestamp.toMillis()
                             if (influxConfig.valueConfig[u.values[0].path] && influxConfig.valueConfig[u.values[0].path].split('|>')[1]==='latLng') {
@@ -216,11 +225,24 @@ module.exports = (app) => {
                                 metrics.push(metric)
                             }
                         }
+                        /* trigger board switch
+                        if (path === NAVSTATE && currentState && values !== currentState)
+                        {
+                          grafana.next(values, () => {
+                            currentState = values
+                          })
+                        } */
                     })
                 }
               );
-              if (kiosk) 
-                grafana.check(grafana.launch, app.setPluginStatus)
+              if (kiosk) {
+                grafana.check("launching grafana dashboard...", (status) => {
+                  grafana.launch(status, (pid) => {
+                    currentState = 'default'
+                    app.debug(`Grafana dashboard launched with status: ${pid}`)
+                  })
+                })
+              }
               app.setPluginStatus('Started');
               app.debug('Plugin started');
             }, 5000, debug);        
@@ -233,7 +255,7 @@ module.exports = (app) => {
           return false
         }
       })
-      kiosk = grafana.init(settings.grafana, debug) && settings.grafana.autostart
+      kiosk = grafana.init(settings.grafana, debug, app.setPluginStatus, app.setPluginError) && settings.grafana.autostart
       // init path configuration          
       influxConfig.pathConfig = {}
       influxConfig.valueConfig = {}
@@ -252,8 +274,12 @@ module.exports = (app) => {
             influxConfig.pathConfig[p.path] = influx.reconfig(p.path, p.config)
         if (p.hasOwnProperty('convert'))
             influxConfig.valueConfig[p.path] = p.convert
-        updates[influxConfig.pathConfig[p.path] ? influxConfig.pathConfig[p.path] : p.path] = null
       })
+      /* if (influxConfig.paths.length===0 || influxConfig.paths.map(p => p.path).indexOf(NAVSTATE)===-1)
+      {
+        influxConfig.paths.push({path: NAVSTATE, policy: "instant", config: "ignore" })
+        influxConfig.pathConfig[NAVSTATE] = "ignore"
+      } */
     },
     stop: () => {
       unsubscribes.forEach(f => f());
@@ -362,7 +388,7 @@ module.exports = (app) => {
                   command: {
                     type: 'string',
                     title: 'Launch command',
-                    description: 'base command: chromium-borwser or grafana-kiosk',
+                    description: 'base command: chromium-browser or grafana-kiosk',
                     enum: ["chromium-browser", "grafana-kiosk"],
                     default: ''
                   },                  
@@ -394,7 +420,7 @@ module.exports = (app) => {
                   idle: {
                     type: 'string',
                     title: 'Idle dashboard',
-                    description: 'id of the default dashboard, eg. signalk-dashboard-idle',
+                    description: 'url id of the default dashboard, eg. signalk-dashboard/idle',
                     default: ''
                   },
                   params: {
@@ -403,6 +429,36 @@ module.exports = (app) => {
                     description: 'configuration params on dashboard launch',
                     default: ''
                   },
+                }
+              },
+              boards: {
+                type: 'array',
+                default: [],
+                title: 'Switchboards according to navigation state',
+                items: {
+                  type: 'object',
+                  required: ['state', 'uid'],
+                  properties: {
+                    state: {
+                      type: 'string',
+                      title: 'State',
+                      description: 'according to @meri-imperiumi/signalk-autostate plugin',
+                      enum: ["moored", "sailing", "motoring", "anchored"],
+                      default: ''
+                    },                  
+                    uid: {
+                      type: 'string',
+                      title: 'Dashboard ID',
+                      description: 'url id of the dashboard, eg. signalk-dashboard/moored',
+                      default: ''
+                    },
+                    params: {
+                      type: 'string',
+                      title: 'Dashboard params',
+                      description: 'configuration params for dashboard launch',
+                      default: ''
+                    }
+                  }
                 }
               }
             },
@@ -460,59 +516,3 @@ module.exports = (app) => {
   
   return plugin;
 };
-
-
-// function log(msg) { app.debug(msg); }
-
-  /*
-  if (sails.init(props.sails, pluginId, props.putToken, props.deltaInterval, log))
-  {
-    sails.update(props, app.savePluginOptions, restartPlugin)
-    registered = sails.register(app.registerPutHandler, props.sails, { read: app.getSelfPath, publish: sendDelta }, { delta: sendDelta, meta: sendMeta}, app.setPluginStatus)
-  }
-  else
-    app.setPluginError('Error initializing plugin');
-
-
-    timer = setInterval(_ => {
-      const values = registered ? sails.config(sails.list(true)) : 
-      (props.sails || []).map(sail => {
-        return {
-          path: "sails." + sail.label,
-          value: sail.state && sail.state > 0 ? 
-            {
-              reduced: sail.states[sail.state-1].value!=0,
-              reefs: sail.state-1,
-              furledRatio: 1-sail.states[sail.state-1].value
-            }
-          : null
-        };
-      });
-      sendDelta(values);
-    }, props.deltaInterval * 1000);
-    */
-
-   /*
-   * 
-   * @param {Array<[{path:path, value:value}]>} values 
-   *
-     function sendDelta(values) {
-      app.handleMessage(pluginId, {
-          updates: [
-              {
-                  values: values
-              }
-          ]
-      });
-  }
-
-  function sendMeta(units) {
-      app.handleMessage(pluginId, {
-          updates: [
-              {
-                  meta: units
-              }
-          ]   
-      })
-  }
-  */
