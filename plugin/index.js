@@ -162,10 +162,13 @@ module.exports = (app) => {
                 }
                 // trigger board switch
                 let state = app.getSelfPath(NAVSTATE).value
-                if (currentState && currentState !== state)
-                    grafana.next(state, () => {
-                      currentState = state
+                if (currentState && currentState !== state) {
+                  let current = currentState
+                  grafana.next(state, () => {
+                      app.debug(`Switched board from ${current} to ${state}`)                      
                     })
+                    currentState = state
+                }
               }, influxConfig.frequency*1000)
               app.debug (`Interval started, upload frequency: ${influxConfig.frequency}s`)
               

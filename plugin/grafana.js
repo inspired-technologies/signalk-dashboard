@@ -18,6 +18,7 @@ let exec
 let boards = {
     default: {}
 }
+// const states = []
 let current
 
 function init (config, logger, set, err) {
@@ -116,56 +117,37 @@ function next (state, callback) {
     else
         next = boards[state].tab
     if (current !== next)
-        steps = next > current ? next-current : (next+length-current) % length
+        steps = next > current ? next - current : length - current + next
     if (steps !== 0)
     {
         let cmd = nexttab
         for (i=1; i<steps; i++)
-            cmd += ` sleep 1 && ${nexttab} `
+            cmd += ` && sleep 1 && ${nexttab} `
 
+        log(`Switching tab from ${current} to ${next} ...`)
         Proc(exec.replace("{cmd}", cmd), (error,stdout,stderr) => {
             if (error) {
                 err( `exec error: ${error ? error : stderr}` );
                 return;
             }
-            log(`Switched board from ${current} to ${next}`)
             current = next
             callback()
         })
     }
 }
 
-/* function exists (dir, log) {
-    // joining path of directory 
-    const fileArray = []
-    files = fs.readdirSync(dir)
-    Object.keys(boards).forEach((b) => {
-        let file = path.join(boards.dir, b)
-        if (b!=="folder" && fs.existsSyncSync(file))
-        {
-            boards[b].valid = true
-            log(b)
-        }
-    })
-}
-
-function send (filenames, cacheDir) {
-    var input = []
-    filenames.forEach(function (file) {
-        if (file.includes(REQUEUED)) {
-            const thisfile = fs.readFileSync(`${cacheDir}/${file}`, 'utf8')
-            input.push(...JSON.parse(thisfile));
-        }
-    });
-    
-    for (const file of filenames) {
-        if (file.includes(REQUEUED))
-            fs.unlink((`${cacheDir}/${file}`), err => {
-                if (err) throw err;
-        });
-    };
-
-    return input
+/* function state_matrix (length) {
+    for (i=0; i<length; i++)
+    {
+        states[i]=[]
+        for (j=0; j<length; j++)
+            if (i==j)
+                states[i][j] = 0
+            else if (j>i)
+                states[i][j] = j-i
+            else 
+                states[i][j] = length-i+j
+    }
 } */
 
 module.exports = {
@@ -173,6 +155,4 @@ module.exports = {
     check,      // check kiosk service is already runnning
     launch,     // launch kiosk service
     next        // switch visible board to new state
-    // load,
-    // change
 }
