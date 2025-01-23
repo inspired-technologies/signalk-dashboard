@@ -1,4 +1,66 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "influxdb",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    },
+    {
+      "name": "VAR_TIMEZONE",
+      "type": "constant",
+      "label": "TZ",
+      "value": "1h",
+      "description": ""
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "gauge",
+      "name": "Gauge",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.4.0"
+    },
+    {
+      "type": "datasource",
+      "id": "influxdb",
+      "name": "InfluxDB",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "volkovlabs-echarts-panel",
+      "name": "Business Charts",
+      "version": "6.5.0"
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -25,14 +87,14 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 7,
+  "id": null,
   "links": [],
   "liveNow": true,
   "panels": [
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "de94d0a6y720wc"
+        "uid": "${DS_INFLUXDB}"
       },
       "description": "below keel",
       "fieldConfig": {
@@ -87,10 +149,26 @@
       "targets": [
         {
           "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"depth\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"keel\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          }
         }
       ],
       "title": "Depth",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "lastNotNull"
+            },
+            "replaceFields": true
+          }
+        }
+      ],
       "transparent": true,
       "type": "stat"
     },
@@ -169,7 +247,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "groupBy": [
             {
@@ -298,7 +376,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "groupBy": [
             {
@@ -355,7 +433,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "de94d0a6y720wc"
+        "uid": "${DS_INFLUXDB}"
       },
       "fieldConfig": {
         "defaults": {
@@ -417,7 +495,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 3,
+        "w": 4,
         "x": 11,
         "y": 0
       },
@@ -439,7 +517,11 @@
       "targets": [
         {
           "query": "from(bucket:\"${signalk}\")\r\n  |> range(start:  -6h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pressure\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"outside\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value / 100.0 }))\r\n  |> aggregateWindow(every: 20s, fn: mean, createEmpty: false)\r\n  |> yield(name: \"Pressure\")",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          }
         }
       ],
       "timeFrom": "6h",
@@ -517,9 +599,9 @@
         ]
       },
       "gridPos": {
-        "h": 6,
+        "h": 5,
         "w": 3,
-        "x": 14,
+        "x": 15,
         "y": 0
       },
       "id": 24,
@@ -544,7 +626,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "groupBy": [
             {
@@ -589,7 +671,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "de94d0a6y720wc"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -599,12 +681,12 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 5,
-        "x": 17,
+        "w": 4,
+        "x": 18,
         "y": 0
       },
       "id": 33,
-      "interval": "5m",
+      "interval": "3m",
       "options": {
         "baidu": {
           "callback": "bmapReady",
@@ -618,7 +700,7 @@
           "key": "",
           "plugin": "AMap.Scale,AMap.ToolBar"
         },
-        "getOption": "if (context.panel.data.series.length === 0) {\n  return {}\n}\n\nlet wind = [];\nconst colors = ['#56A64B', '#FFEE52', '#FF780A', '#E02F44', '#CA95E5', '#8F3BE8']\nlet max = 25;\ncontext.panel.data.series.map((s) => {\n  const time = s.fields.find((f) => f.type === 'time').values\n  const speed = s.fields.find((f) => f.name === 'speed').values\n  const direction = s.fields.find((f) => f.name === 'direction').values\n  wind = time.map((id, i) => {\n    return { symbolRotate: direction[i], value: [time[i], speed[i]] };\n  });\n  max = (Math.max(...speed) < max ? max : Math.max(...speed)) - 5;\n});\n\nreturn {\n  xAxis: {\n    type: 'time'\n  },\n  yAxis: {\n    type: 'value'\n  },\n  visualMap: {\n    orient: 'horizontal',\n    left: 'center',\n    min: 0,\n    max: 10,\n    text: ['High', 'Low'],\n    dimension: 1,\n    inRange: {\n      color: colors.slice(0, Math.floor(max / 10))\n    }\n  },\n  series: [\n    {\n      data: wind,\n      type: 'line',\n      symbol: 'path://M31 24.7343L21.7917 24.7343V0L9.20826 0L9.20826 24.7343H0L15.5 45L31 24.7343Z',\n      symbolSize: 20,\n      lineStyle: {\n        width: 0\n      }\n    }\n  ]\n};",
+        "getOption": "if (context.panel.data.series.length === 0) {\n  return {}\n}\n\nlet wind = [];\nconst colors = ['#56A64B', '#FFEE52', '#FF780A', '#E02F44', '#CA95E5', '#8F3BE8']\nlet max = 25;\ncontext.panel.data.series.map((s) => {\n  const time = s.fields.find((f) => f.type === 'time').values\n  const speed = s.fields.find((f) => f.name === 'speed').values\n  const direction = s.fields.find((f) => f.name === 'direction').values\n  wind = time.map((id, i) => {\n    return { symbolRotate: direction[i], value: [time[i], speed[i]] };\n  });\n  max = (Math.max(...speed) < max ? max : Math.max(...speed)) - 5;\n});\n\nreturn {\n  xAxis: {\n    type: 'time'\n  },\n  yAxis: {\n    type: 'value'\n  },\n  visualMap: {\n    orient: 'horizontal',\n    left: 'center',\n    min: 0,\n    max: 10,\n    text: ['High', 'Low'],\n    dimension: 1,\n    inRange: {\n      color: colors.slice(0, Math.floor(max / 10)+1)\n    }\n  },\n  series: [\n    {\n      data: wind,\n      type: 'line',\n      symbol: 'path://M31 24.7343L21.7917 24.7343V0L9.20826 0L9.20826 24.7343H0L15.5 45L31 24.7343Z',\n      symbolSize: 20,\n      lineStyle: {\n        width: 0\n      }\n    }\n  ]\n};",
         "google": {
           "callback": "gmapReady",
           "key": ""
@@ -638,11 +720,14 @@
       "pluginVersion": "6.5.0",
       "targets": [
         {
-          "query": "from(bucket: \"${signalk}\")\r\n\t|> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n\t|> filter(fn: (r) => r[\"_measurement\"] == \"wind\")\r\n\t|> filter(fn: (r) => r[\"_field\"] == \"speed\" or r[\"_field\"] == \"direction\")\r\n\t|> filter(fn: (r) => r[\"environment\"] == \"true\")\r\n\t|> map(fn: (r) => ({ r with _value: \r\n\t      if r._field == \"speed\" \r\n        then ((r._value * 1.943844))\r\n\t      else ((r._value / 3.1415 * 180.0) - 90.0) \r\n\t  }))\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"direction\"] and exists r[\"speed\"])\r\n  |> aggregateWindow(every: 5m, fn: last, column: \"direction\", createEmpty: false) ",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "from(bucket: \"${signalk}\")\r\n\t|> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n\t|> filter(fn: (r) => r[\"_measurement\"] == \"wind\")\r\n\t|> filter(fn: (r) => r[\"_field\"] == \"speed\" or r[\"_field\"] == \"direction\")\r\n\t|> filter(fn: (r) => r[\"environment\"] == \"true\")\r\n\t|> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n\t|> map(fn: (r) => ({ r with _value: \r\n\t      if r._field == \"speed\" \r\n        then ((r._value * 1.943844))\r\n\t      else ((r._value / 3.1415 * 180.0) - 90.0) \r\n\t  }))\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"direction\"] and exists r[\"speed\"])\r\n  |> aggregateWindow(every: 3m, fn: last, column: \"direction\", createEmpty: false) ",
           "refId": "A"
         }
       ],
-      "title": "",
       "transparent": true,
       "type": "volkovlabs-echarts-panel"
     },
@@ -721,7 +806,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "query": "from(bucket: \"${telegraf}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temp\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"temp\")\r\n  |> filter(fn: (r) => r.host == \"${skhost}\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
@@ -734,7 +819,136 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "de94d0a6y720wc"
+        "uid": "${DS_INFLUXDB}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-RdYlGr"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [
+            {
+              "options": {
+                "10": {
+                  "color": "dark-red",
+                  "index": 2
+                },
+                "20": {
+                  "color": "dark-yellow",
+                  "index": 1
+                },
+                "50": {
+                  "color": "dark-green",
+                  "index": 0
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_value {label=\"0\", type=\"fuel\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Fuel"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_value {label=\"1\", type=\"fresh\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Fresh 1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_value {label=\"2\", type=\"fresh\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Fresh 2"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 3,
+        "x": 15,
+        "y": 5
+      },
+      "id": 36,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 19,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "manual",
+        "valueMode": "text"
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"tanks\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"level\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n\t|> map(fn: (r) => ({ r with _value:  (r._value * 100.0) }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n\t|> filter(fn: (r) => exists r[\"label\"] and exists r[\"type\"])\r\n  |> group(columns: [\"type\", \"label\"])\r\n  |> yield(name: \"mean\")",
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          }
+        }
+      ],
+      "title": "Tanks",
+      "transparent": true,
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
       },
       "fieldConfig": {
         "defaults": {
@@ -806,7 +1020,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "query": "from(bucket: \"${telegraf}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temp\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"temp\")\r\n    |> filter(fn: (r) => r[\"host\"] == \"${fhost}\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
@@ -916,7 +1130,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "groupBy": [
             {
@@ -1003,7 +1217,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${datasource}"
+        "uid": "${DS_INFLUXDB}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1071,7 +1285,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "groupBy": [
             {
@@ -1201,7 +1415,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "groupBy": [
             {
@@ -1330,7 +1544,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
           "groupBy": [
             {
@@ -1387,7 +1601,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "de94d0a6y720wc"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1403,10 +1617,6 @@
               {
                 "color": "semi-dark-red",
                 "value": null
-              },
-              {
-                "color": "semi-dark-blue",
-                "value": 3
               },
               {
                 "color": "semi-dark-yellow",
@@ -1465,11 +1675,11 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 3,
+        "w": 4,
         "x": 11,
         "y": 6
       },
-      "id": 26,
+      "id": 37,
       "options": {
         "displayMode": "gradient",
         "legend": {
@@ -1492,150 +1702,74 @@
         },
         "showUnfilled": true,
         "sizing": "auto",
-        "valueMode": "color"
+        "valueMode": "text"
       },
       "pluginVersion": "11.4.0",
       "targets": [
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${DS_INFLUXDB}"
           },
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"batteries\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"voltage\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
-          "refId": "A"
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"batteries\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"voltage\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n  |> yield(name: \"voltage\")",
+          "refId": "Actual"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\" and r[\"type\"] == \"batteries\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"min\" or r[\"_field\"] == \"max\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n  |> drop (columns: [\"_start\", \"_stop\", \"_time\", \"type\"])\r\n  |> yield(name: \"max\")",
+          "refId": "Config"
         }
       ],
       "title": "Batteries",
-      "transparent": true,
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "de94d0a6y720wc"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-RdYlGr"
-          },
-          "decimals": 0,
-          "fieldMinMax": false,
-          "mappings": [
-            {
-              "options": {
-                "10": {
-                  "color": "dark-red",
-                  "index": 2
-                },
-                "20": {
-                  "color": "dark-yellow",
-                  "index": 1
-                },
-                "50": {
-                  "color": "dark-green",
-                  "index": 0
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "max": 100,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "dark-green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "_value {label=\"0\", type=\"fuel\"}"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Fuel"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "_value {label=\"1\", type=\"fresh\"}"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Fresh 1"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "_value {label=\"2\", type=\"fresh\"}"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Fresh 2"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 14,
-        "y": 6
-      },
-      "id": 36,
-      "options": {
-        "displayMode": "gradient",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "maxVizHeight": 300,
-        "minVizHeight": 16,
-        "minVizWidth": 19,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "manual",
-        "valueMode": "text"
-      },
-      "pluginVersion": "11.4.0",
-      "targets": [
+      "transformations": [
         {
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"tanks\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"level\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n\t|> map(fn: (r) => ({ r with _value:  (r._value * 100.0) }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n\t|> filter(fn: (r) => exists r[\"label\"] and exists r[\"type\"])\r\n  |> group(columns: [\"type\", \"label\"])\r\n  |> yield(name: \"mean\")",
-          "refId": "A"
+          "filter": {
+            "id": "byRefId",
+            "options": "Config"
+          },
+          "id": "calculateField",
+          "options": {
+            "alias": "Max",
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "max"
+            },
+            "replaceFields": true
+          },
+          "topic": "series"
+        },
+        {
+          "id": "configFromData",
+          "options": {
+            "applyTo": {
+              "id": "byName",
+              "options": "voltage"
+            },
+            "configRefId": "Config",
+            "mappings": [
+              {
+                "fieldName": "Max",
+                "handlerKey": "max"
+              }
+            ]
+          },
+          "topic": "series"
+        },
+        {
+          "id": "filterByRefId",
+          "options": {
+            "include": "Actual"
+          }
         }
       ],
-      "title": "Tanks",
       "transparent": true,
       "type": "bargauge"
     }
   ],
-  "preload": false,
   "refresh": "1m",
   "schemaVersion": 40,
   "tags": [
@@ -1645,10 +1779,7 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "text": "influxdb",
-          "value": "de94d0a6y720wc"
-        },
+        "current": {},
         "description": "",
         "hide": 2,
         "name": "datasource",
@@ -1659,13 +1790,10 @@
         "type": "datasource"
       },
       {
-        "current": {
-          "text": "signalk_metrics",
-          "value": "signalk_metrics"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "${datasource}"
+          "uid": "${DS_INFLUXDB}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()",
         "hide": 2,
@@ -1679,13 +1807,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "infra_metrics",
-          "value": "infra_metrics"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${DS_INFLUXDB}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"telegraf\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()",
         "hide": 2,
@@ -1699,10 +1824,7 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "sdevpi",
-          "value": "sdevpi"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
           "uid": "${datasource}"
@@ -1720,13 +1842,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "fluxpi",
-          "value": "fluxpi"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${DS_INFLUXDB}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"influx\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
         "description": "",
@@ -1741,10 +1860,7 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "fluxpi",
-          "value": "fluxpi"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
           "uid": "${datasource}"
@@ -1763,13 +1879,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "SIRIUS (D)",
-          "value": "SIRIUS (D)"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${DS_INFLUXDB}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"name\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> last()",
         "description": "Name of the vessel monitored",
@@ -1787,10 +1900,7 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "211284872",
-          "value": "211284872"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
           "uid": "${datasource}"
@@ -1808,13 +1918,10 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": "moored",
-          "value": "moored"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${DS_INFLUXDB}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()",
         "description": "Vessel state",
@@ -1829,54 +1936,64 @@
         "type": "query"
       },
       {
+        "description": "timezone for visualization",
+        "hide": 2,
+        "label": "TZ",
+        "name": "timezone",
+        "query": "${VAR_TIMEZONE}",
+        "skipUrlSync": true,
+        "type": "constant",
         "current": {
-          "text": "2025-01-20T05:17:30.000Z",
-          "value": "2025-01-20T05:17:30.000Z"
+          "value": "${VAR_TIMEZONE}",
+          "text": "${VAR_TIMEZONE}",
+          "selected": false
         },
+        "options": [
+          {
+            "value": "${VAR_TIMEZONE}",
+            "text": "${VAR_TIMEZONE}",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "current": {},
         "datasource": {
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n",
+        "definition": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunrise: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunrise)) }))\r\n",
         "description": "Date & time of sunrise",
         "label": "Sunrise",
         "name": "sunrise",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n"
+          "query": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunrise: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunrise)) }))\r\n"
         },
         "refresh": 2,
         "regex": "",
         "type": "query"
       },
       {
-        "current": {
-          "text": "2025-01-20T15:19:52.000Z",
-          "value": "2025-01-20T15:19:52.000Z"
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${DS_INFLUXDB}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n",
+        "definition": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunset: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunset)) }))",
         "description": "Date & Time of sun set",
         "label": "Sunset",
         "name": "sunset",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n"
+          "query": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunset: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunset)) }))"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "type": "query"
       },
       {
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "influxdb",
           "uid": "${datasource}"
@@ -1919,6 +2036,6 @@
   "timezone": "",
   "title": "SignalK Board [anchored]",
   "uid": "signalk-board-anchored",
-  "version": 6,
+  "version": 15,
   "weekStart": ""
 }
