@@ -27,6 +27,8 @@
     "@influxdata/influxdb-client-apis": "^1.35.0",
     "@signalk/signalk-schema": "^1.7.2",
     "debug": "^4.4.0",
-    "luxon": "^3.5.0"
+    "js-yaml": "^4.1.0",
+    "luxon": "^3.5.0",
+    "ssh2": "^1.16.0"
   }
 }
