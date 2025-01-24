@@ -133,7 +133,7 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"speed\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"overground\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value * 1.943844 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"speed\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"overground\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value * 1.943844 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A",
           "datasource": {
             "type": "influxdb",
@@ -272,7 +272,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: -3h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"wind\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"speed\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"true\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r[\"source\"] == \"derived-data\")\r\n  |> map(fn: (r) => ({r with _value: r._value * 1.94384}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"windspeed\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: -3h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"wind\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"speed\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"true\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({r with _value: r._value * 1.94384}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"windspeed\")",
           "refId": "CPU Temperature",
           "resultFormat": "time_series",
           "select": [
@@ -293,6 +293,18 @@
         }
       ],
       "title": "Wind",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "mean"
+            },
+            "replaceFields": true
+          }
+        }
+      ],
       "transparent": true,
       "type": "gauge"
     },
@@ -355,7 +367,7 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"wind\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"angle\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"apparent\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: (r._value*180.0/3.1415) }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"wind\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"angle\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"apparent\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: (r._value*180.0/3.1415) }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A",
           "datasource": {
             "type": "influxdb",
@@ -438,7 +450,7 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"course\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"overground\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: ((r._value*180.0/3.1415)+360.0)%360.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"course\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"overground\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: ((r._value*180.0/3.1415)+360.0)%360.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A",
           "datasource": {
             "type": "influxdb",
@@ -539,7 +551,7 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "query": "from(bucket: \"signalk_metrics\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n",
+          "query": "from(bucket: \"signalk_metrics\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n",
           "refId": "A",
           "datasource": {
             "type": "influxdb",
@@ -637,7 +649,7 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "query": "from(bucket:\"${signalk}\")\r\n  |> range(start:  -6h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pressure\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"outside\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value / 100.0 }))\r\n  |> aggregateWindow(every: 20s, fn: mean, createEmpty: false)\r\n  |> yield(name: \"Pressure\")",
+          "query": "from(bucket:\"${signalk}\")\r\n  |> range(start:  -6h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pressure\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"outside\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value / 100.0 }))\r\n  |> aggregateWindow(every: 20s, fn: mean, createEmpty: false)\r\n  |> yield(name: \"Pressure\")",
           "refId": "A",
           "datasource": {
             "type": "influxdb",
@@ -715,7 +727,7 @@
       "pluginVersion": "11.4.0",
       "targets": [
         {
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"depth\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"keel\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"depth\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"keel\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> last()",
           "refId": "A",
           "datasource": {
             "type": "influxdb",
@@ -832,7 +844,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"outside\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"outside\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"outside\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"outside\")",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -958,7 +970,7 @@
           "hide": false,
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"inside\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"inside\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"inside\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"inside\")",
           "refId": "Inside",
           "resultFormat": "time_series",
           "select": [
@@ -1087,7 +1099,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"fridge\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"fridge\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"fridge\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"fridge\")",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -1216,7 +1228,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"freezer\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"freezer\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"freezer\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"freezer\")",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -1345,7 +1357,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"water\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"water\")",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"water\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value -273.15}))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"water\")",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -1474,7 +1486,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"throughwater\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> last()\r\n\r\n",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"throughwater\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> last()\r\n\r\n",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -1873,13 +1885,13 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunrise: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunrise)) }))",
+        "definition": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunrise: string(v: date.add(d: ${timezone}, to: time(v: uint(v: r._value)))) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r.sunrise)-11, v: r.sunrise) }))",
         "description": "Date & time of sunrise",
         "label": "Sunrise",
         "name": "sunrise",
         "options": [],
         "query": {
-          "query": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunrise: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunrise)) }))"
+          "query": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunrise\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunrise: string(v: date.add(d: ${timezone}, to: time(v: uint(v: r._value)))) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r.sunrise)-11, v: r.sunrise) }))"
         },
         "refresh": 2,
         "regex": "",
@@ -1891,13 +1903,13 @@
           "type": "influxdb",
           "uid": "${DS_INFLUXDB}"
         },
-        "definition": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunset: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunset)) }))\r\n",
+        "definition": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunset: string(v: date.add(d: ${timezone}, to: time(v: uint(v: r._value)))) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r.sunset)-11, v: r.sunset) }))\r\n",
         "description": "Date & Time of sun set",
         "label": "Sunset",
         "name": "sunset",
         "options": [],
         "query": {
-          "query": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunset: date.add(d: ${timezone}, to: time(v: r._value)) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r._value)-5, v: string(v: r.sunset)) }))\r\n"
+          "query": "import \"date\"\r\nimport \"strings\"\r\n\r\nfrom(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"time\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"sunset\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with sunset: string(v: date.add(d: ${timezone}, to: time(v: uint(v: r._value)))) }))\r\n  |> map(fn: (r) => ({ r with _value: strings.substring(start: 11, end: strings.strlen(v: r.sunset)-11, v: r.sunset) }))\r\n"
         },
         "refresh": 2,
         "regex": "",
@@ -1947,6 +1959,6 @@
   "timezone": "",
   "title": "SignalK Board [sailing]",
   "uid": "signalk-board-sailing",
-  "version": 8,
+  "version": 9,
   "weekStart": ""
 }
