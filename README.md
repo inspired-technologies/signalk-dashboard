@@ -56,7 +56,7 @@ Enter your influx connection as
 ### Chromium browser cli test
 In order to verify that installation and configuration was successful run the following command in bash using a ssh shell login to your RPi:
 ```
-chromium-browser "https://time.is/Berlin" "http://localhost:3000/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m" --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized & 
+chromium-browser "https://time.is/Berlin" "http://localhost:port/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m" --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized & 
 ```
 *Note: Tests have been with Raspberry OS configured to wayland backend with labwc instead of X11 or Wayfire, but any other configuration might work fine as well.*
 This should load the RPi Monitor Dashboard in full screen and Grafana in Kiosk mode like this:
@@ -91,7 +91,7 @@ target:
   password: **redacted**
   playlist: false
   URL: >-
-    http://localhost:3000/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m
+    http://localhost:port/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m
   ignore-certificate-errors: false
 ``` 
 In order to verify that installation and configuration was successful run the kiosk from the cmd line:
@@ -99,6 +99,19 @@ In order to verify that installation and configuration was successful run the ki
 /usr/bin/grafana-kiosk -c /home/pi/signalk-dashboard.yaml
 ```
 Finally, configure grafana-kiosk as system service
+
+## Dashboards
+
+### Plugin configuration
+
+### Additional grafana plugins
+
+### Sample Dashboards
+
+### Descriptions handling
+
+### Data handling
+
 
 ## Additional grafana plugins
 Some non-standard grafana plugins may be of interest to visualize data points likewise wind on a windrose or graph.
