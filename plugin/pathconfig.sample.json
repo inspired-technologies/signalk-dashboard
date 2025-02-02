@@ -1,0 +1,16 @@
+[
+    { "path": "environment.sunlight.times.sunrise", "period":3600000,"policy":"fixed","convert":"dt|>influx","config":"sunlight.times|>forecast.time"},
+    { "path": "environment.sunlight.times.sunset", "period":3600000,"policy":"fixed","convert":"dt|>influx","config":"sunlight.times|>forecast.time"},
+    { "path": "environment.*.temperature", "policy": "instant", "minPeriod": 10000 },
+    { "path": "environment.*.pressure", "policy": "instant", "minPeriod": 10000 },
+    { "path": "environment.*.humidity", "policy": "instant", "minPeriod": 10000 },
+    { "path": "environment.*.relativeHumidity", "policy": "instant", "config": "relativeHumidity|>humidity", "minPeriod": 10000 },
+    { "path": "electrical.batteries.*.voltage", "policy": "instant", "config": "label.~:electrical.batteries|>batteries", "minPeriod": 10000 },
+    { "path": "electrical.batteries.*.current", "policy": "instant", "config": "label.~:electrical.batteries|>batteries", "minPeriod": 10000 },
+    { "path": "tanks.freshWater.*.currentLevel", "policy": "instant", "config": "type.fresh.label.~:freshWater.currentLevel|>level", "minPeriod": 10000 },
+    { "path": "tanks.freshWater.*.currentVolume","policy": "instant", "config": "type.fresh.label.~:freshWater.currentVolume|>volume", "minPeriod": 10000 },
+    { "path": "tanks.wasteWater.*.currentLevel", "policy": "instant", "config": "type.waste.label.~:wasteWater.currentLevel|>level", "minPeriod": 10000 },
+    { "path": "tanks.wasteWater.*.currentVolume", "policy": "instant", "config": "type.waste.label.~:wasteWater.currentVolume|>volume", "minPeriod": 10000 },
+    { "path": "tanks.fuel.*.currentLevel", "policy": "instant", "config": "type.fuel.label.~:fuel.currentLevel|>level", "minPeriod": 10000 },
+    { "path": "tanks.fuel.*.currentVolume", "policy": "instant", "config": "type.fuel.label.~:fuel.currentVolume|>volume", "minPeriod": 10000 }
+]
