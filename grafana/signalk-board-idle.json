@@ -294,7 +294,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"throughwater\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"trip\")\r\n  |> filter(fn: (r) => r.id == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> last()\r\n\r\n",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"trip\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)  \r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> last()",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -718,6 +718,6 @@
   "timezone": "",
   "title": "SignalK Board [idle]",
   "uid": "signalk-board-idle",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }

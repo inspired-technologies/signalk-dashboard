@@ -10,7 +10,6 @@ let setError
 let configFile
 const checkchrom = "pgrep chromium | head -1"
 const checkkiosk = "sudo systemctl status grafana-kiosk | grep 'Active:' | awk '{print $2}'"
-// const env = "export XDG_RUNTIME_DIR=/run/user/10000"
 const closebrowser = "kill {pid}"
 const chromium = "chromium-browser {uri} {params}"
 const tabbed  = "chromium-browser [tabs] {params}"
@@ -21,7 +20,6 @@ let exec
 let boards = {
     default: {}
 }
-// const states = []
 let current
 let rl = {
     host: '',
@@ -100,7 +98,6 @@ function init (config, logger, set, err) {
 }
 
 function check(msg, callback) {
-    // Proc(exec.replace("{cmd}", command.includes("chromium") ? checkchrom : '"'+checkkiosk+'"'), (error,stdout,stderr) => {
     Proc(exec.replace("{cmd}", command.includes("chromium") ? checkchrom : checkkiosk), (error,stdout,stderr) => {
             if (error) {
             setError(`grafana error: ${error || stderr}`)
