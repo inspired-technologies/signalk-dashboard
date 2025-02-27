@@ -25,7 +25,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 3,
+  "id": 26,
   "links": [],
   "liveNow": true,
   "panels": [
@@ -100,7 +100,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -243,7 +243,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -498,7 +498,7 @@
         "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -589,7 +589,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "ceblmlr77e134e"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -635,12 +635,12 @@
           "series": []
         }
       },
-      "pluginVersion": "6.6.0",
+      "pluginVersion": "6.5.0",
       "targets": [
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "query": "from(bucket: \"${signalk}\")\r\n\t|> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n\t|> filter(fn: (r) => r[\"_measurement\"] == \"wind\")\r\n\t|> filter(fn: (r) => r[\"_field\"] == \"speed\" or r[\"_field\"] == \"direction\")\r\n\t|> filter(fn: (r) => r[\"environment\"] == \"true\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\t\r\n\t|> map(fn: (r) => ({ r with _value: \r\n\t      if r._field == \"speed\" \r\n        then ((r._value * 1.943844))\r\n\t      else ((r._value / 3.1415 * 180.0) - 90.0) \r\n\t  }))\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"direction\"] and exists r[\"speed\"])\r\n\t|> drop(columns: [\"id\", \"source\"])\r\n  |> aggregateWindow(every: 5m, fn: last, column: \"direction\", createEmpty: false) ",
           "refId": "A"
@@ -711,7 +711,7 @@
         "sizing": "auto",
         "valueMode": "text"
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -729,7 +729,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "ceblmlr77e134e"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -840,9 +840,13 @@
         "sizing": "manual",
         "valueMode": "text"
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
           "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"tanks\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"level\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n\t|> map(fn: (r) => ({ r with _value:  (r._value * 100.0) }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n\t|> filter(fn: (r) => exists r[\"label\"] and exists r[\"type\"])\r\n  |> group(columns: [\"type\", \"label\"])\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
@@ -917,7 +921,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -1035,7 +1039,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -1152,7 +1156,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -1269,7 +1273,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -1319,7 +1323,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "ceblmlr77e134e"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1413,9 +1417,13 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
           "query": "from(bucket:\"${signalk}\")\r\n  |> range(start:  -3h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pressure\")\r\n  |> filter(fn: (r) => r[\"environment\"] == \"outside\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value / 100.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> yield(name: \"pressure\")",
           "refId": "A"
         }
@@ -1494,7 +1502,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -1512,7 +1520,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "ceblmlr77e134e"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1579,9 +1587,13 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
           "query": "from(bucket: \"${telegraf}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temp\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"temp\")\r\n  |> filter(fn: (r) => r[\"host\"] == \"${fhost}\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
@@ -1673,7 +1685,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -1702,7 +1714,7 @@
       {
         "current": {
           "text": "influxdb",
-          "value": "ceblmlr77e134e"
+          "value": "de94d0a6y720wc"
         },
         "description": "",
         "hide": 2,
@@ -1761,8 +1773,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "fdevpi",
-          "value": "fdevpi"
+          "text": "sdevpi",
+          "value": "sdevpi"
         },
         "datasource": {
           "type": "influxdb",
@@ -1784,8 +1796,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "fdevpi",
-          "value": "fdevpi"
+          "text": "fluxpi",
+          "value": "fluxpi"
         },
         "datasource": {
           "type": "influxdb",
@@ -1833,8 +1845,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "fdevpi",
-          "value": "fdevpi"
+          "text": "fluxpi",
+          "value": "fluxpi"
         },
         "datasource": {
           "type": "influxdb",
@@ -1906,8 +1918,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "motoring",
-          "value": "motoring"
+          "text": "moored",
+          "value": "moored"
         },
         "datasource": {
           "type": "influxdb",
@@ -1942,8 +1954,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "05:41:27",
-          "value": "05:41:27"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",
@@ -1965,8 +1977,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "16:59:45",
-          "value": "16:59:45"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",

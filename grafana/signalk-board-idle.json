@@ -25,7 +25,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 25,
   "links": [],
   "liveNow": true,
   "panels": [
@@ -76,7 +76,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -142,7 +142,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -205,7 +205,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -271,7 +271,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -368,7 +368,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.2",
+      "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
@@ -428,7 +428,7 @@
       {
         "current": {
           "text": "influxdb",
-          "value": "ceblmlr77e134e"
+          "value": "de94d0a6y720wc"
         },
         "description": "",
         "hide": 2,
@@ -481,8 +481,8 @@
       },
       {
         "current": {
-          "text": "fdevpi",
-          "value": "fdevpi"
+          "text": "sdevpi",
+          "value": "sdevpi"
         },
         "datasource": {
           "type": "influxdb",
@@ -550,8 +550,8 @@
       },
       {
         "current": {
-          "text": "fdevpi",
-          "value": "fdevpi"
+          "text": "fluxpi",
+          "value": "fluxpi"
         },
         "datasource": {
           "type": "influxdb",
@@ -617,8 +617,8 @@
       },
       {
         "current": {
-          "text": "sailing",
-          "value": "sailing"
+          "text": "moored",
+          "value": "moored"
         },
         "datasource": {
           "type": "influxdb",
@@ -652,8 +652,8 @@
       },
       {
         "current": {
-          "text": "05:41:27",
-          "value": "05:41:27"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",
@@ -676,8 +676,8 @@
       },
       {
         "current": {
-          "text": "16:46:40",
-          "value": "16:46:40"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",
