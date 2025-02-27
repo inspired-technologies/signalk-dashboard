@@ -100,8 +100,9 @@ function init (config, logger, set, err) {
 }
 
 function check(msg, callback) {
-    Proc(exec.replace("{cmd}", command.includes("chromium") ? checkchrom : '"'+checkkiosk+'"'), (error,stdout,stderr) => {
-        if (error) {
+    // Proc(exec.replace("{cmd}", command.includes("chromium") ? checkchrom : '"'+checkkiosk+'"'), (error,stdout,stderr) => {
+    Proc(exec.replace("{cmd}", command.includes("chromium") ? checkchrom : checkkiosk), (error,stdout,stderr) => {
+            if (error) {
             setError(`grafana error: ${error || stderr}`)
             err( `exec error: ${error ? error : stderr}` );
             return;
