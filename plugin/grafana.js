@@ -1,25 +1,32 @@
-// const fs = require('fs')
 const Proc = require('child_process').exec;
+const { Client } = require('ssh2');
+const fs = require('fs');
+const yaml = require('js-yaml');
 
 let log
 let err = console.error
 let setStatus
 let setError
+let configFile
 const checkchrom = "pgrep chromium | head -1"
-const checkkiosk = "sudo systemctl status grafana-kiosk | grep Active:"
-const env = "export XDG_RUNTIME_DIR=/run/user/10000"
+const checkkiosk = "sudo systemctl status grafana-kiosk | grep 'Active:' | awk '{print $2}'"
 const closebrowser = "kill {pid}"
 const chromium = "chromium-browser {uri} {params}"
 const tabbed  = "chromium-browser [tabs] {params}"
 const nexttab = "wtype -M ctrl -P Tab"
-const kiosk = "grafana-kiosk"
+const kiosk = "sudo systemctl restart {service}"
 let command
 let exec
 let boards = {
     default: {}
 }
-// const states = []
 let current
+let rl = {
+    host: '',
+    port: 22,
+    user: '',
+    key: null
+}
 
 function init (config, logger, set, err) {
     // store content to file
@@ -35,7 +42,8 @@ function init (config, logger, set, err) {
         }
         if (config.boards && config.boards.length>0)
         {
-            config.launch.command = "chromium-tabbed"
+            if (config.launch.command.includes('chromium'))
+                config.launch.command = "chromium-tabbed"
             let i=1
             config.boards.forEach(b => {
                 boards[b.state] = {
@@ -45,7 +53,19 @@ function init (config, logger, set, err) {
                 }
             })
         }
-        exec = config.launch.remote && config.launch.remote!=="" ? config.launch.remote+' "{cmd}"' : '{cmd}'
+        if (config.launch.remote)
+        {
+            exec = config.launch.remote!=="" ? config.launch.remote+' "{cmd}"' : '{cmd}'
+            let login = config.launch.remote.split(" ")
+            if (login.length>0)
+            {
+                rl.host = login[login.length-1].split("@")[1]
+                rl.user = login[login.length-1].split("@")[0]
+                rl.key = fs.readFileSync(config.launch.keyFile)
+            }
+        }
+        else
+            exec = '{cmd}'
         switch (config.launch.command)
         {
             case "chromium-browser":
@@ -60,7 +80,12 @@ function init (config, logger, set, err) {
                 command = exec.replace("{cmd}", tabbed.replace("[tabs]", urls.join(' ')).replace("{params}", config.launch.params) + ' &')
                 break;
             case "grafana-kiosk":
-                command = exec.replace("{cmd}", `sudo systemctl restart ${kiosk}`)
+                configFile = config.launch.params
+                Object.keys(boards).forEach(b => {
+                    boards[b].url = `${config.dashboard.server}/d/${boards[b].id}?kiosk${(boards[b].params ? `&${boards[b].params}` : '')}`
+                }) 
+                updateConfig(configFile, boards.default.url, () => { log(`Configured launch URL: ${boards.default.url}`) })
+                command = exec.replace("{cmd}", kiosk.replace("{service}", config.launch.command))
                 break;
             default:
                 if (config.autostart)
@@ -74,18 +99,18 @@ function init (config, logger, set, err) {
 
 function check(msg, callback) {
     Proc(exec.replace("{cmd}", command.includes("chromium") ? checkchrom : checkkiosk), (error,stdout,stderr) => {
-        if (error) {
+            if (error) {
             setError(`grafana error: ${error || stderr}`)
             err( `exec error: ${error ? error : stderr}` );
             return;
         }
         setStatus(`Started: ${msg.replace("{pid}", stdout.replace("\n", ""))}`)
-        callback(command.includes("chromium") ? stdout.replace("\n", "") : stdout.replace("Active: ", ""))
+        callback(stdout.replace("\n", ""))
     })
 }
 
 function launch (status, callback) {
-    if (status==='') {       
+    if (status==='') {
         let msg = command.includes("chromium") ? chromium.replace("uri","pid").replace("{params}",`${Object.keys(boards).length} tab(s)`) : kiosk
         let timer = setInterval( () => {
             check(msg, callback)
@@ -94,7 +119,15 @@ function launch (status, callback) {
         }, 15000)
         Proc("nohup " + command + " >/dev/null 2>&1 </dev/null", (error,stdout,stderr) => { return; })
     } else if (!command.includes("chromium")) {
-        log('Grafana Kiosk not yet implemented!')
+        log(`Grafana kiosk service is ${status}`)
+        Proc(status==='active' ? command : command.replace("restart", "start"), (error,stdout,stderr) => {
+            if (error) {
+                setError(`grafana error: ${error || stderr}`)
+                err( `exec error: ${error ? error : stderr}` );
+                return;
+            }
+            check("Grafana kiosk-service {pid}", callback)
+        })
     } else {
         log(`Status check: ${status}`)
         Proc(exec.replace("{cmd}", closebrowser.replace("{pid}", status)), (error,stdout,stderr) => {
@@ -109,6 +142,13 @@ function launch (status, callback) {
 }
 
 function next (state, callback) {
+    if (command.includes("chromium"))
+        nextTab (state, callback)
+    else
+        newBoard (state, callback)
+}
+
+function nextTab (state, callback) {
     let next = 0
     let length = Object.keys(boards).length
     let steps = 0
@@ -136,19 +176,100 @@ function next (state, callback) {
     }
 }
 
-/* function state_matrix (length) {
-    for (i=0; i<length; i++)
-    {
-        states[i]=[]
-        for (j=0; j<length; j++)
-            if (i==j)
-                states[i][j] = 0
-            else if (j>i)
-                states[i][j] = j-i
-            else 
-                states[i][j] = length-i+j
+function newBoard (state, callback)
+{
+    log(`Switching board to ${state} ...`)
+    updateConfig(configFile, boards[boards.hasOwnProperty(state) ? state : 'default'].url, () => {
+        Proc("sleep 2 && " +command, (error,stdout,stderr) => {
+            if (error) {
+                err( `exec error: ${error ? error : stderr}` );
+                return;
+            }
+            callback()
+        })
+    })
+}
+
+function updateConfig(configFile, url, callback)
+{
+    if (exec.includes('ssh'))
+        modifyRemoteYaml(configFile, url, callback)
+    else {
+        modifyLocalYaml(configFile, url)
+        callback()
     }
-} */
+}
+
+function modifyLocalYaml(file, url) {
+    try {
+        // Read the YAML file
+        const fileContents = fs.readFileSync(file, 'utf8');
+        const data = yaml.load(fileContents);
+
+        // Modify the URL parameter
+        if (data.target && data.target.URL) {
+            data.target.URL = url;
+        } else {
+            throw new Error('URL parameter not found in the YAML file.');
+        }
+
+        // Write the updated YAML back to the file
+        const newYaml = yaml.dump(data);
+        fs.writeFileSync(file, newYaml, 'utf8');
+
+        log('Board URL updated');
+    } catch (e) {
+        err('Error updating the board URL:', e);
+    }
+}
+
+function modifyRemoteYaml(file, url, callback) {
+    const conn = new Client();
+    try
+    {
+        conn.on('ready', () => {
+            // log('SSH Client :: ready');
+            conn.sftp((err, sftp) => {
+                if (err) throw err;
+
+                // Read the remote YAML file
+                sftp.readFile(file, 'utf8', (err, data) => {
+                    if (err) throw err;
+
+                    // Parse the YAML file
+                    let yamlData = yaml.load(data);
+
+                    // Modify the URL parameter
+                    if (yamlData.target && yamlData.target.URL) {
+                        yamlData.target.URL = url;
+                    } else {
+                        throw new Error('URL parameter not found in the YAML file.');
+                    }
+
+                    // Convert the modified data back to YAML
+                    const newYaml = yaml.dump(yamlData);
+
+                    // Write the modified YAML back to the remote file
+                    sftp.writeFile(file, newYaml, 'utf8', (err) => {
+                        if (err) throw err;
+                        log('Board URL updated on remote');
+                        conn.end();
+                    });
+
+                    // next action
+                    callback()
+                });
+            });
+        }).connect({
+            host: rl.host,
+            port: rl.port,
+            username: rl.user,
+            privateKey: rl.key
+        });
+    } catch (e) {
+        err('Error updating the board URL:', e);
+    }
+}
 
 module.exports = {
     init,       // initialize environment

@@ -25,7 +25,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 13,
+  "id": 25,
   "links": [],
   "liveNow": true,
   "panels": [
@@ -294,7 +294,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"trip\")\r\n  |> filter(fn: (r) => r.id == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> last()\r\n\r\n",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"trip\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)  \r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> last()",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -391,7 +391,7 @@
           ],
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"throughwater\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)  \r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> last()\r\n\r\n",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"log\")\r\n  |> filter(fn: (r) => r[\"navigation\"] == \"throughwater\")\r\n  |> filter(fn: (r) => r[\"_field\"] != \"trip\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)  \r\n  |> map(fn: (r) => ({ r with _value: r._value / 1852.0 }))\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> drop(columns: [\"id\", \"source\"])\r\n  |> last()\r\n\r\n",
           "refId": "Outside",
           "resultFormat": "time_series",
           "select": [
@@ -617,8 +617,8 @@
       },
       {
         "current": {
-          "text": "sailing",
-          "value": "sailing"
+          "text": "moored",
+          "value": "moored"
         },
         "datasource": {
           "type": "influxdb",
@@ -652,8 +652,8 @@
       },
       {
         "current": {
-          "text": "05:57:22",
-          "value": "05:57:22"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",
@@ -676,8 +676,8 @@
       },
       {
         "current": {
-          "text": "16:46:40",
-          "value": "16:46:40"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",
@@ -718,6 +718,6 @@
   "timezone": "",
   "title": "SignalK Board [idle]",
   "uid": "signalk-board-idle",
-  "version": 17,
+  "version": 3,
   "weekStart": ""
 }

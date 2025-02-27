@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 6,
+  "id": 27,
   "links": [],
   "liveNow": true,
   "panels": [
@@ -1558,7 +1558,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "de94d0a6y720wc"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1628,6 +1628,10 @@
       "pluginVersion": "11.5.0",
       "targets": [
         {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
           "query": "from(bucket: \"${telegraf}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temp\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"temp\")\r\n    |> filter(fn: (r) => r[\"host\"] == \"${fhost}\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
@@ -1944,8 +1948,8 @@
       },
       {
         "current": {
-          "text": "06:07:28",
-          "value": "06:07:28"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",
@@ -1965,8 +1969,8 @@
       },
       {
         "current": {
-          "text": "16:36:17",
-          "value": "16:36:17"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",

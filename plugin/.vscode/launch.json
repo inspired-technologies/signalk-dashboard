@@ -16,6 +16,15 @@
         {
             "type": "node",
             "request": "attach",
+            "name": "Attach to FluxDevPi",
+            "address": "192.168.0.96",
+            "port": 9229,
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/home/pi/src/signalk-dashboard/plugin"
+        },
+        {
+            "type": "node",
+            "request": "attach",
             "name": "Attach to Pican-M",
             "address": "192.168.1.98",
             "port": 9229,

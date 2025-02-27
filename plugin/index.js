@@ -228,13 +228,6 @@ module.exports = (app) => {
                                 metrics.push(metric)
                             }
                         }
-                        /* trigger board switch
-                        if (path === NAVSTATE && currentState && values !== currentState)
-                        {
-                          grafana.next(values, () => {
-                            currentState = values
-                          })
-                        } */
                     })
                 }
               );
@@ -278,16 +271,11 @@ module.exports = (app) => {
         if (p.hasOwnProperty('convert'))
             influxConfig.valueConfig[p.path] = p.convert
       })
-      /* if (influxConfig.paths.length===0 || influxConfig.paths.map(p => p.path).indexOf(NAVSTATE)===-1)
-      {
-        influxConfig.paths.push({path: NAVSTATE, policy: "instant", config: "ignore" })
-        influxConfig.pathConfig[NAVSTATE] = "ignore"
-      } */
     },
     stop: () => {
       unsubscribes.forEach(f => f());
       unsubscribes = [];
-      // shutdown -> remove ???
+      // shutdown
       debug("stopping");
       timer && clearInterval(timer);
       debug("stopped");
@@ -386,7 +374,6 @@ module.exports = (app) => {
               launch: {
                 type: "object",
                 title: "Launch Configuration",
-                // required: ['command'],
                 properties: {
                   command: {
                     type: 'string',
@@ -411,7 +398,7 @@ module.exports = (app) => {
               },
               dashboard: {
                 type: "object",
-                title: "Launch Configuration",
+                title: "Dashboard Configuration",
                 required: ['idle'],
                 properties: {
                   server: {
