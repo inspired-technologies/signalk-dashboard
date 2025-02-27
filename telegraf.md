@@ -1,3 +1,30 @@
+# Setting up Telegraf with InfluxDB
+Telegraf collects metrics and events from RaspberryPi and adds. Telegraf is entirely plugin-driven and has a multitude of plugins already installed. 
+
+## Install 
+To have the Telegraf repository key installed, we will need to go ahead and add its
+repository to the sources list. 
+
+Add the Telegraf key and install the service to RasperryPi OS by running the following commands:
+``` 
+curl -fsSL https://repos.influxdata.com/influxdata-archive_compat.key | \
+    gpg --dearmor | \
+    sudo tee  /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg > /dev/null
+source /etc/os-release
+echo "deb https://repos.influxdata.com/debian ${VERSION_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+sudo apt update && sudo apt install telegraf -y
+```
+With Telegraf now installed, set it up as a service. Run the following two commands to enable Telegraf to start at boot:
+```
+sudo systemctl unmask telegraf
+sudo systemctl enable telegraf
+```
+
+## Configuration
+For telegraf to push data interval, hostname and token of your InfluxDB most be configured in telegraf.conf.
+
+Either use the default file or use a reduced data set like this only:
+```
 # Configuration for telegraf agent
 [agent]
   interval = "30s"
@@ -42,7 +69,6 @@
   ## Set mount_points will restrict the stats to only the specified mount points.
   # mount_points = ["/"]
   ## Ignore mount points by filesystem type.
-  # ignore_fs = ["tmpfs", "devtmpfs", "devfs", "overlay", "aufs", "squashfs"]
   ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
 [[inputs.diskio]]
 [[inputs.mem]]
@@ -56,3 +82,10 @@
   data_format = "grok"
   grok_patterns = ["%{NUMBER:value:float}"]
 [[inputs.temp]]
+```
+
+## Service startup
+Finally, start the service through system control manager:
+```
+sudo systemctl start telegraf
+```
