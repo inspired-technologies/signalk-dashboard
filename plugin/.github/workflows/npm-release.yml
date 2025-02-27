@@ -5,7 +5,7 @@ name: npm-release
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   publish:
@@ -14,12 +14,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-          
+
       - name: Check if version has been updated
         id: check
         uses: EndBug/version-check@v2
         with:
-          file-url: https://unpkg.com/signalk-sailsconfig@latest/package.json
+          file-url: https://unpkg.com/signalk-dashboard@latest/package.json
           static-checking: localIsNew
 
       - name: Log when unchanged
@@ -49,7 +49,7 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           registry-url: https://registry.npmjs.org/
       - name: Install Package 
         if: steps.check.outputs.changed == 'true'
