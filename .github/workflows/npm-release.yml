@@ -43,7 +43,6 @@ jobs:
         with:
           tag_name: ${{ steps.check.outputs.version }}
           release_name: Release ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})
-          working-directory: ${{env.working-directory}}
           body: |
             New release to NPM
             - Tagged to ${{ steps.check.outputs.version }}
