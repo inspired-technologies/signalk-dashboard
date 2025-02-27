@@ -131,7 +131,7 @@ Next to the standard set of panels some non-standard grafana plugins may be of i
 
 Displaying a graphical chart with wind speed & direction over time can be accomplished with `Business Charts` provided as part of the Grafana plugins library
 
-![Wind-Graph](./img/volkow-wind-chart.png)
+![Wind-Graph](../img/volkow-wind-chart.png)
 
 Activate the `VolkovLab eCharts` via
 ```
@@ -141,7 +141,7 @@ sudo grafana-cli plugins install volkovlabs-echarts-panel
 ### Spectraphilic Windrose
 Another option is a windrose panel developed by Spectraphilic; it is still under development but may fulfill the needs.
 
-![Wind-Rose](./img/spectraphillic-windrose.png)
+![Wind-Rose](../img/spectraphillic-windrose.png)
 
 Enable dev mode within grafana by editing  `/etc/grafana/grafana.ini`:
 ```
@@ -176,7 +176,7 @@ In case Grafana and SignalK services not running on the same host also remote ex
 
 | Host Config | Kiosk Config |
 | ----------- | ------------ |
-| ![Host Configuration](./img/host-config.png) | ![Remote Exec](./img/remote-exec.png) |
+| ![Host Configuration](../img/host-config.png) | ![Remote Exec](../img/remote-exec.png) |
 
 2. Chromium
 
@@ -190,11 +190,11 @@ Variety of parameters may change depending on version - the following represent 
 
 Unique IDs for dashbards and their parameters can be determined from the grafana UI and shall be configured accordingly in the plugin:
 
-![Grafana Url](./img/grafana-url-params.png)
+![Grafana Url](../img/grafana-url-params.png)
 
 *Note: It is advisable not to configure variables as parameters as they are usually calculated from Influx during regular refreshes*
 
-![Dashboard Configuration](./img/dashboard-config.png)
+![Dashboard Configuration](../img/dashboard-config.png)
 
 ## Upload path configration
 
