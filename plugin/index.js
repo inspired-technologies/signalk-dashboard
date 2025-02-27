@@ -275,7 +275,7 @@ module.exports = (app) => {
     stop: () => {
       unsubscribes.forEach(f => f());
       unsubscribes = [];
-      // shutdown -> remove ???
+      // shutdown
       debug("stopping");
       timer && clearInterval(timer);
       debug("stopped");
@@ -374,7 +374,6 @@ module.exports = (app) => {
               launch: {
                 type: "object",
                 title: "Launch Configuration",
-                // required: ['command'],
                 properties: {
                   command: {
                     type: 'string',
@@ -399,7 +398,7 @@ module.exports = (app) => {
               },
               dashboard: {
                 type: "object",
-                title: "Launch Configuration",
+                title: "Dashboard Configuration",
                 required: ['idle'],
                 properties: {
                   server: {
