@@ -15,6 +15,8 @@ Consider this plugin if you have at least one RaspberryPi connected to a screen 
 - Grafana (v11.5.x)
 - Telegraf (v1.33.x or similar, if compatibel with the InfluxDB version used)
 *Note: not required, but beneficial in case infra monitoring should be done*
+- SignalK AutoState Plugin (> v0.4)
+*Note: required, if dashboards shall follow vessel state changes*
 
 Combining all services into a single device may work, but is not necessarily recommended for production to avoid performance issues when heavier data load is expected. A distributed implementation having SignalK separated from InfluxDB and Grafana may be better and is supported by the plugin; yet, requires some additional configuration steps for password-less remote exeuction - see also __[public key authentication](./pubkey.md)__
 
@@ -114,15 +116,17 @@ Next to the standard set of panels some non-standard grafana plugins may be of i
 ### VolkovLab eCharts
 Displaying a graphical chart with wind speed & direction over time can be accomplished with `Business Charts` provided as part of the Grafana plugins library 
 
+![Wind-Graph](./img/volkow-wind-chart.png)
+
 Activate the `VolkovLab eCharts` via 
 ```
 sudo grafana-cli plugins install volkovlabs-echarts-panel
 ```
 
-![Wind-Graph](./img/volkow-wind-chart.png)
-
 ### Spectraphilic Windrose
 Another option is a windrose panel developed by Spectraphilic; it is still under development but may fulfill the needs.
+
+![Wind-Rose](./img/spectraphillic-windrose.png)
 
 Enable dev mode within grafana by editing  `/etc/grafana/grafana.ini`:
 ```
@@ -145,8 +149,6 @@ sudo ls -al /var/lib/grafana/plugins
 ```
 Finally reboot or restart the grafana-service. 
 
-![Wind-Rose](./img/spectraphillic-windrose.png)
-
 During testing at times we observed the plugin displaying an error state which later on disappeared again. Hence, do not expect it to be simply working.
 
 ### Sample Dashboards
@@ -165,13 +167,21 @@ Some of the samples dashboards require information to filter data from InfluxDB.
 
 1. Hostnames
 
-![Host Configuration](./img/host-config.png)
-
 In case Grafana and SignalK services not running on the same host also remote execution needs to be configured.
 
-![Remote Exec](./img/remote-exec.png)
+| Host Config | Kiosk Config | 
+| ----------- | ------------ | 
+| ![Host Configuration](./img/host-config.png) | ![Remote Exec](./img/remote-exec.png) |
 
-2. Dashboards
+2. Chromium
+
+Variety of parameters may change depending on version - the following represent a working example for `latest chromium` on `bookworm`  
+```
+--kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized
+```
+*Note: in case grafana-kiosk is selected no specific chromium configuration needs to be done* 
+
+3. Dashboards
 
 Unique IDs for dashbards and their parameters can be determined from the grafana UI and shall be configured accordingly in the plugin:
 
@@ -192,7 +202,7 @@ Position - if not covered elsewhere:
   { "path": "navigation.state", "policy": "instant", "config":"navigation.state|>navigation.vessel.position.state", "minPeriod": 10000 },
   { "path": "navigation.position", "policy": "instant", "config":"navigation.position|>navigation.vessel.position", "convert": "{lon,lat}|>latLng", "minPeriod": 10000 },
   { "path": "navigation.log", "policy": "fixed", period: 60000, "config":"navigation.log|>navigation.throughwater.log" },
-  { "path": "navigation.trip.log", "policy": "fixed", period: 60000, "config":"navigation.log|>navigation.throughwater.log.trip" }
+  { "path": "navigation.trip.log", "policy": "fixed", period: 60000 }
 ```
 
 Batteries & Tanks:
@@ -202,7 +212,7 @@ Batteries & Tanks:
   { "path": "tanks.fuel.*.currentLevel", "period": 10000, "policy": "instant", "config": "type.fuel.label.~:fuel.currentLevel|>level", "minPeriod": 10000 }
 ```
 
-Environmentals:
+Environmentals (if not covered by signalk-barograph):
 ```
   { "path": "environment.sunlight.times.sunrise", "period":3600000,"policy":"fixed","convert":"dt|>influx","config":"sunlight.times|>forecast.time"},
   { "path": "environment.sunlight.times.sunset", "period":3600000,"policy":"fixed","convert":"dt|>influx","config":"sunlight.times|>forecast.time"},
@@ -212,9 +222,11 @@ Environmentals:
   { "path": "environment.*.relativeHumidity", "policy": "instant", "config": "relativeHumidity|>humidity", "minPeriod": 10000 },
 ```
 
-## Notes
+## Notes & References
 This plugin is inspired by projects like full-screen __[kiosk-displays](https://grafana.com/blog/2019/05/02/grafana-tutorial-how-to-create-kiosks-to-display-dashboards-on-a-tv/)__ and __[rpi-kiosk](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/)__ yet more optimized data gathered from SignalK and for a smaller screen estate in a boating environment. 
 
 It has been tested and works well with certain touch displays available from WaveShare, eg. __[8.8inch-dsi-lcd](https://www.waveshare.com/8.8inch-dsi-lcd.htm)__ for RaspberryPi 4 and 5. 
 
 Grafana-Kiosk binaries for various hardware can be downloaded via the __[grafana-kiosk repo](https://github.com/grafana/grafana-kiosk)__ on GitHub.
+
+SignalK __[AutoState](https://www.npmjs.com/package/@meri-imperiumi/signalk-autostate)__ Plugin can be directly installed from the App Store. 
