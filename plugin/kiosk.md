@@ -1,7 +1,9 @@
 # Grafana Kiosk
+
 Setup grafana-kiosk as service as per [instructions on github](https://github.com/grafana/grafana-kiosk)
 
 ## Install
+
 Download the grafana-kiosk binary for your system first and then configure as service: 
 ```
 sudo touch /etc/systemd/system/grafana-kiosk.service
@@ -9,6 +11,7 @@ sudo chmod 664 /etc/systemd/system/grafana-kiosk.service
 ```
 
 ## Configuration
+
 Configure grafana kiosk to use a specific configuration yaml file within the service description: 
 ```
 [Unit]
@@ -25,7 +28,7 @@ Environment="XAUTHORITY=/home/pi/.Xauthority"
 ExecStartPre=xset s off
 ExecStartPre=xset -dpms
 ExecStartPre=xset s noblank
-ExecStart=/usr/bin/grafana-kiosk -c /home/pi/src/signalk-config/dashboard.yaml
+ExecStart=/usr/bin/grafana-kiosk -c /home/pi/.../dashboard.yaml
 
 [Install]
 WantedBy=graphical.target

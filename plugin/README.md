@@ -40,7 +40,7 @@ The plugin supports 2 different modes of operation when displaying dashboards in
 - Chromium browser in full-screen with the grafana dashboard loaded in kiosk mode. In order to enable switching dashboards according to navigation states tabbed browsing is leveraged.
 - Alternatively the same can be achieved by the __[grafana-kiosk utility](https://github.com/grafana/grafana-kiosk)__ configured as a system service.
 
-While both modes should accomplish the same result, tabbed browsing may bare a certain risk of getting out of sync with the signalling of states from the server; in order to reduce the risk, some delays may be experienced during switching. On the other hand the Grafana Kiosk service needs to be restarted with each navigation state change and hence, will also cause some screen 'flickering' ...
+*Note: While both modes should accomplish the same result, tabbed browsing may bare a certain risk of getting out of sync with the signalling of states from the server; in order to reduce the risk, some delays may be experienced during switching. On the other hand the Grafana Kiosk service needs to be restarted with each navigation state change and hence, will also cause some screen 'flickering'*
 
 ### Grafana configuration
 
@@ -52,10 +52,11 @@ In prinicple, no specific configuration needs to be done to the grafana service 
 
 In order for this plugin to work InfluxDB needs to be accessible and configured. Using the latest __[JS client](https://influxdata.github.io/influxdb-client-js/influxdb-client.html)__ v2 API, the plugin supports both OSS version 1.8.x (32bit) and 2.7.x (64bit).
 
-* Notes:
+Notes:
+
 - Implementation likely is in the same local network as the SignalK server, but could be be hosted on docker or alternatively in the cloud
-- Flux as query language is defaulted on v2.x, but has recently be moved into maintenance mode. Sample dashboards provided with this plugin still use Flux to enquiry. 
-- For Influx v1.8.x Flux can be __[enabled, but is disabled by default](https://docs.influxdata.com/influxdb/v1/flux/installation/)__*
+- Flux as query language is defaulted on v2.x, but has recently be moved into maintenance mode. Sample dashboards provided with this plugin still use Flux to enquiry.
+- For Influx v1.8.x Flux can be __[enabled, but is disabled by default](https://docs.influxdata.com/influxdb/v1/flux/installation/)__
 
 Enter your influx connection as
 
@@ -172,11 +173,26 @@ Some of the samples dashboards require information to filter data from InfluxDB.
 
 1. Hostnames
 
-In case Grafana and SignalK services not running on the same host also remote execution needs to be configured.
+In case Grafana and SignalK services not running on the same host also remote execution needs to be configured, otherwise can remain empty:
 
 | Host Config | Kiosk Config |
 | ----------- | ------------ |
 | ![Host Configuration](../img/host-config.png) | ![Remote Exec](../img/remote-exec.png) |
+
+In addition add the path to the appropriate keyfile to the plugin configuration within :
+```
+...
+"grafana": {
+  ...
+  "launch": {
+    ...
+     "keyFile": "/home/pi/.ssh/id_rsa"
+    ...
+  },
+  ...
+},
+...
+```
 
 2. Chromium
 
@@ -184,7 +200,8 @@ Variety of parameters may change depending on version - the following represent 
 ```
 --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized
 ```
-*Note: in case grafana-kiosk is selected no specific chromium configuration needs to be done* 
+
+*Note: in case grafana-kiosk is selected no specific chromium configuration needs to be done here - just specify the full path to the kiosk-configuration yaml file as param*
 
 3. Dashboards
 
@@ -206,8 +223,8 @@ Position - if not covered elsewhere:
 ```
   { "path": "navigation.state", "policy": "instant", "config":"navigation.state|>navigation.vessel.position.state", "minPeriod": 10000 },
   { "path": "navigation.position", "policy": "instant", "config":"navigation.position|>navigation.vessel.position", "convert": "{lon,lat}|>latLng", "minPeriod": 10000 },
-  { "path": "navigation.log", "policy": "fixed", period: 60000, "config":"navigation.log|>navigation.throughwater.log" },
-  { "path": "navigation.trip.log", "policy": "fixed", period: 60000 }
+  { "path": "navigation.log", "policy": "fixed", "period": 60000, "config":"navigation.log|>navigation.throughwater.log" },
+  { "path": "navigation.trip.log", "policy": "fixed", "period": 60000 }
 ```
 
 Batteries & Tanks:
@@ -227,12 +244,22 @@ Environmentals (if not covered by signalk-barograph):
   { "path": "environment.*.relativeHumidity", "policy": "instant", "config": "relativeHumidity|>humidity", "minPeriod": 10000 },
 ```
 
+## Samples
+
+### Dashboard Moored
+
+![moored](../img/sample-moored.png)
+
+### Dashboard Sailing
+
+![sailing](../img/sample-sailing.png)
+
 ## Notes & References
 
-This plugin is inspired by projects like full-screen __[kiosk-displays](https://grafana.com/blog/2019/05/02/grafana-tutorial-how-to-create-kiosks-to-display-dashboards-on-a-tv/)__ and __[rpi-kiosk](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/)__ yet more optimized data gathered from SignalK and for a smaller screen estate in a boating environment. 
+This plugin is inspired by projects like full-screen __[kiosk-displays](https://grafana.com/blog/2019/05/02/grafana-tutorial-how-to-create-kiosks-to-display-dashboards-on-a-tv/)__ and __[rpi-kiosk](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/)__ yet more geared towards data gathered from SignalK and optimized for a smaller screen estate in a boating environment.
 
-It has been tested and works well with certain touch displays available from WaveShare, eg. __[8.8inch-dsi-lcd](https://www.waveshare.com/8.8inch-dsi-lcd.htm)__ for RaspberryPi 4 and 5. 
+It has been tested and works well with certain touch displays available from WaveShare, eg. __[8.8inch-dsi-lcd](https://www.waveshare.com/8.8inch-dsi-lcd.htm)__ for RaspberryPi 4 and 5.
 
 Grafana-Kiosk binaries for various hardware can be downloaded via the __[grafana-kiosk repo](https://github.com/grafana/grafana-kiosk)__ on GitHub.
 
-SignalK __[AutoState](https://www.npmjs.com/package/@meri-imperiumi/signalk-autostate)__ Plugin can be directly installed from the App Store. 
+SignalK __[AutoState](https://www.npmjs.com/package/@meri-imperiumi/signalk-autostate)__ Plugin can be directly installed from the App Store.

@@ -1,6 +1,6 @@
 {
   "name": "signalk-dashboard",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Server plugin & Grafana dashboard for SignalK data",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
     "signalk-category-instruments"
   ],
   "author": "Inspired Technologies",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/inspired-technologies/signalk-dashboard/issues"
   },

@@ -1,7 +1,9 @@
 # Setting up public key authentication
+
 Key based authentication in SSH is called public key authentication. The purpose of ssh-copy-id is to make setting up public key authentication easier. The process is as follows.
 
 ## Generate an SSH Key
+
 Creating a key pair (public key and private key) only takes a minute. The key files are usually stored in the ~/.ssh directory.
 
 With OpenSSH, an SSH key is created using ssh-keygen. In the simplest form, just run ssh-keygen and answer the questions. 
@@ -31,6 +33,7 @@ The key's randomart image is:
 ```
 
 ## Copy the key to a server
+
 Once an SSH key has been created, the ssh-copy-id command can be used to install it as an authorized key on the server. Once the key has been authorized for SSH, it grants access to the server without a password.
 
 Use a command like the following to copy SSH key:
@@ -43,6 +46,7 @@ This logs into the server host, and copies keys to the server, and configures th
 Only the public key is copied to the server. The private key should never be copied to another machine.
 
 ## Test the new key
+
 Once the key has been copied, it is best to test it:
 ```
 ssh user@host

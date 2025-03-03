@@ -1,4 +1,8 @@
 [
+    { "path": "navigation.state", "policy": "instant", "config":"navigation.state|>navigation.vessel.position.state", "minPeriod": 10000 },
+    { "path": "navigation.position", "policy": "instant", "config":"navigation.position|>navigation.vessel.position", "convert": "{lon,lat}|>latLng", "minPeriod": 10000 },
+    { "path": "navigation.log", "policy": "fixed", "period": 60000, "config":"navigation.log|>navigation.throughwater.log" },
+    { "path": "navigation.trip.log", "policy": "fixed", "period": 60000 },  
     { "path": "environment.sunlight.times.sunrise", "period":3600000,"policy":"fixed","convert":"dt|>influx","config":"sunlight.times|>forecast.time"},
     { "path": "environment.sunlight.times.sunset", "period":3600000,"policy":"fixed","convert":"dt|>influx","config":"sunlight.times|>forecast.time"},
     { "path": "environment.*.temperature", "policy": "instant", "minPeriod": 10000 },
