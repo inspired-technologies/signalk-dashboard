@@ -254,6 +254,10 @@ Environmentals (if not covered by signalk-barograph):
 
 ![sailing](../img/sample-sailing.png)
 
+### Dashboard Sailing
+
+![motoring](../img/sample-motoring.png)
+
 ## Notes & References
 
 This plugin is inspired by projects like full-screen __[kiosk-displays](https://grafana.com/blog/2019/05/02/grafana-tutorial-how-to-create-kiosks-to-display-dashboards-on-a-tv/)__ and __[rpi-kiosk](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/)__ yet more geared towards data gathered from SignalK and optimized for a smaller screen estate in a boating environment.
