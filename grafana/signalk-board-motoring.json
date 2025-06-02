@@ -80,7 +80,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -151,7 +151,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -258,7 +258,7 @@
         "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -397,7 +397,7 @@
         "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -518,14 +518,14 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "${datasource}"
           },
-          "query": "from(bucket: \"signalk_metrics\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n",
+          "query": "from(bucket: \"signalk_metrics\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> last()\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n",
           "refId": "A"
         }
       ],
@@ -616,7 +616,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -694,7 +694,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -779,7 +779,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -892,7 +892,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -1010,7 +1010,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -1127,7 +1127,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -1244,7 +1244,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -1361,7 +1361,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -1478,7 +1478,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -1563,7 +1563,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -1753,8 +1753,8 @@
       },
       {
         "current": {
-          "text": "sailing",
-          "value": "sailing"
+          "text": "moored",
+          "value": "moored"
         },
         "datasource": {
           "type": "influxdb",
@@ -1876,6 +1876,6 @@
   "timezone": "",
   "title": "SignalK Board [motoring]",
   "uid": "signalk-board-motoring",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }

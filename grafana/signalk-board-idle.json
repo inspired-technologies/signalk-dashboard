@@ -54,7 +54,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 18,
+        "w": 14,
         "x": 0,
         "y": 0
       },
@@ -76,7 +76,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -113,15 +113,23 @@
           },
           "unit": "string"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "callsign"
+            },
+            "properties": []
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 18,
+        "w": 5,
+        "x": 14,
         "y": 0
       },
-      "id": 44,
+      "id": 46,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -132,17 +140,14 @@
           "calcs": [
             "last"
           ],
-          "fields": "/^position$/",
+          "fields": "/^state \\{id=\"211284872\", navigation=\"vessel\", source=\"signalk\\-autostate\\.XX\"\\}$/",
           "values": false
         },
         "showPercentChange": false,
-        "text": {
-          "valueSize": 60
-        },
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -150,7 +155,96 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "import \"math\"\r\n\r\ncardinal = (l, c) => {\r\n    absolute = math.abs(x: l)\r\n    degrees = math.floor(x: absolute)\r\n    minutesNotTruncated = (absolute - degrees) * 60.0\r\n    minutes = math.floor(x: minutesNotTruncated)\r\n    seconds = math.floor(x: (minutesNotTruncated - minutes) * 60.0)\r\n    return \"${degrees}° ${minutes}' ${seconds}'' ${c}\"\r\n}\r\n\r\nfrom(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> filter(fn: (r) => r.id == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n  |> drop(columns: [\"_start\", \"_stop\", \"id\", \"navigation\", \"source\"])\r\n\t|> map(fn: (r) => ({ r with _field: \r\n    if r[\"lat\"]>0 and r[\"lon\"]>=0 \r\n      then (cardinal(l: r[\"lat\"], c: \"N\") + \" \" + cardinal(l: r[\"lon\"], c: \"E\"))\r\n    else if r[\"lat\"]>0 and r[\"lon\"]<0\r\n      then (cardinal(l: r[\"lat\"], c: \"N\") + \" \" + cardinal(l: r[\"lon\"], c: \"W\"))\r\n    else if r[\"lat\"]<0 and r[\"lon\"]>0\r\n      then (cardinal(l: r[\"lat\"], c: \"S\") + \" \" + cardinal(l: r[\"lon\"], c: \"E\"))\r\n    else if r[\"lat\"]<0 and r[\"lon\"]<0\r\n      then (cardinal(l: r[\"lat\"], c: \"S\") + \" \" + cardinal(l: r[\"lon\"], c: \"W\"))\r\n    else\r\n      \" --- \" \r\n\t  }))\r\n  |> rename(columns: {_field: \"position\"})",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: -24h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"callsign\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> drop(columns: [\"id\", \"label\"])\r\n  |> last()",
+          "refId": "A"
+        }
+      ],
+      "title": "Call Sign",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 3,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lat"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lon"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lon"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "id": 45,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.5.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "query": "from(bucket: \"signalk_metrics\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> last()\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n",
           "refId": "A"
         }
       ],
@@ -183,7 +277,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 10,
+        "w": 8,
         "x": 0,
         "y": 6
       },
@@ -205,7 +299,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -248,8 +342,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 7,
-        "x": 10,
+        "w": 5,
+        "x": 8,
         "y": 6
       },
       "id": 43,
@@ -271,7 +365,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -345,8 +439,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 7,
-        "x": 17,
+        "w": 5,
+        "x": 14,
         "y": 6
       },
       "id": 39,
@@ -368,7 +462,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "11.5.3",
       "targets": [
         {
           "datasource": {
@@ -466,7 +560,7 @@
         },
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${datasource}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"telegraf\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()",
         "hide": 2,
@@ -507,7 +601,7 @@
         },
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${datasource}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"influx\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
         "description": "",
@@ -577,7 +671,7 @@
         },
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${datasource}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"name\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> last()",
         "description": "Name of the vessel monitored",
@@ -622,7 +716,7 @@
         },
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${datasource}"
         },
         "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()",
         "description": "Vessel state",
@@ -718,6 +812,6 @@
   "timezone": "",
   "title": "SignalK Board [idle]",
   "uid": "signalk-board-idle",
-  "version": 3,
+  "version": 7,
   "weekStart": ""
 }

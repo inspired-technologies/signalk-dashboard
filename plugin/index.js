@@ -34,11 +34,12 @@ influx.buffer(metrics)
 
 let config = [
   { metric: "label.vessel.description.name", path: "name" },
-  { metric: "label.vessel.description.mmsi", path: "mmsi" }
+  { metric: "label.vessel.description.mmsi", path: "mmsi" },
+  { metric: "label.vessel.description.callsign", path: "communication", key: "callsignVhf" }
 ]
 let hosts = [
   { metric: "label.host.description.signalk", path: "signalk" },
-  { metric: "label.host.description.influx", path: "influx" },
+  { metric: "label.host.description.influx", path: "influx" }
 ]
 let buckets = [
   { metric: "label.bucket.description.signalk", path: "signalk" },
@@ -143,8 +144,12 @@ module.exports = (app) => {
           app.setPluginStatus('Initialized');
           app.debug('Plugin initialized - sending metrics');
 
-          config.forEach(c => {
-            let value = app.getSelfPath(c.path)
+          config.forEach(c => {            
+            let value = !c.hasOwnProperty("key") ? app.getSelfPath(c.path) : app.getSelfPath(c.path)[c.key]
+            if (value===undefined || value===null) {
+              app.debug(`No value for ${c.path} found, skipping config metric`)
+              return
+            }
             const metric = influx.format(c.metric, value, DateTime.utc(), '')
             if (metric!==null)
               metrics.push(metric)
