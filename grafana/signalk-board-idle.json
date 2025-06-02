@@ -138,9 +138,9 @@
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
-            "last"
+            "lastNotNull"
           ],
-          "fields": "/^state \\{id=\"211284872\", navigation=\"vessel\", source=\"signalk\\-autostate\\.XX\"\\}$/",
+          "fields": "/^callsign$/",
           "values": false
         },
         "showPercentChange": false,
@@ -155,7 +155,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: -24h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"callsign\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> drop(columns: [\"id\", \"label\"])\r\n  |> last()",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: -24h, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"callsign\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> drop(columns: [\"id\", \"label\"])\r\n",
           "refId": "A"
         }
       ],
