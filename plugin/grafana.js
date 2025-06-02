@@ -11,6 +11,7 @@ let configFile
 const checkchrom = "pgrep chromium | head -1"
 const checkkiosk = "sudo systemctl status grafana-kiosk | grep 'Active:' | awk '{print $2}'"
 const closebrowser = "kill {pid}"
+const setbrightness = "echo {val} | sudo tee /sys/class/backlight/*/brightness"
 const chromium = "chromium-browser {uri} {params}"
 const tabbed  = "chromium-browser [tabs] {params}"
 const nexttab = "wtype -M ctrl -P Tab"
@@ -20,7 +21,10 @@ let exec
 let boards = {
     default: {}
 }
-let current
+let current = {
+    board: undefined,
+    brightness: undefined
+}
 let rl = {
     host: '',
     port: 22,
@@ -114,7 +118,7 @@ function launch (status, callback) {
         let msg = command.includes("chromium") ? chromium.replace("uri","pid").replace("{params}",`${Object.keys(boards).length} tab(s)`) : kiosk
         let timer = setInterval( () => {
             check(msg, callback)
-            current = 0
+            current.board = 0
             clearInterval(timer); 
         }, 15000)
         Proc("nohup " + command + " >/dev/null 2>&1 </dev/null", (error,stdout,stderr) => { return; })
@@ -152,25 +156,25 @@ function nextTab (state, callback) {
     let next = 0
     let length = Object.keys(boards).length
     let steps = 0
-    if (!boards.hasOwnProperty(state) && current !== 0)
+    if (!boards.hasOwnProperty(state) && current.board !== 0)
         next = 0
     else
         next = boards[state].tab
-    if (current !== next)
-        steps = next > current ? next - current : length - current + next
+    if (current.board !== next)
+        steps = next > current.board ? next - current.board : length - current.board + next
     if (steps !== 0)
     {
         let cmd = nexttab
         for (i=1; i<steps; i++)
             cmd += ` && sleep 1 && ${nexttab} `
 
-        log(`Switching tab from ${current} to ${next} ...`)
+        log(`Switching tab from ${current.board} to ${next} ...`)
         Proc(exec.replace("{cmd}", cmd), (error,stdout,stderr) => {
             if (error) {
                 err( `exec error: ${error ? error : stderr}` );
                 return;
             }
-            current = next
+            current.board = next
             callback()
         })
     }
@@ -271,9 +275,39 @@ function modifyRemoteYaml(file, url, callback) {
     }
 }
 
+function set (param, value, callback) {
+    switch (param) {
+        case 'brightness': 
+            if (!value || value < 0 || value > 255) {
+                log(`Invalid brightness value: ${value}`)
+                callback(current.brightness)
+            } else if (value !== current.brightness) {
+                // log(`Setting brightness to ${value} ...`)
+                Proc(exec.replace("{cmd}", setbrightness.replace("{val}", value)), (error,stdout,stderr) => {
+                    if (error) {
+                        err( `exec error: ${error ? error : stderr}` );
+                        return;
+                    }
+                    current.brightness = value
+                    log(`Brightness set to ${value}`)
+                    callback(value)
+                })
+            } else {
+                log(`Brightness already set to ${value}`)
+                callback(current.brightness)
+            }
+            break;
+        default: 
+            log(`Screen configuration - invalid parameter: ${param}`)
+            callback(undefined)
+            break;
+    }
+}
+
 module.exports = {
     init,       // initialize environment
     check,      // check kiosk service is already runnning
     launch,     // launch kiosk service
-    next        // switch visible board to new state
+    next,       // switch visible board to new state
+    set         // set board param to value (eg. brightness)
 }

@@ -19,6 +19,8 @@ const influx = require('./influx');
 const convert = require("./skunits")
 const grafana = require('./grafana');
 const NAVSTATE = 'navigation.state'
+const SUNRISE = 'environment.sunlight.times.sunrise'
+const SUNSET = 'environment.sunlight.times.sunset'
 let initialized = false;
 let kiosk = false;
 let overwriteTimeWithNow = false;
@@ -44,6 +46,7 @@ let buckets = [
 ]
 
 let influxConfig = {}
+let screenConfig = {}
 let updates = {}
 let timer
 
@@ -116,6 +119,12 @@ module.exports = (app) => {
         frequency: settings.upload.frequency,
         retention: settings.influx.retention
       }
+      // init Screen configuration
+      screenConfig = {
+        brightness: settings.grafana && settings.grafana.screen && settings.grafana.screen.brightness ? 0 : undefined,
+        daytime: settings.grafana && settings.grafana.screen && settings.grafana.screen.daytime || 225,
+        nighttime: settings.grafana && settings.grafana.screen && settings.grafana.screen.nighttime || 15,
+      }
       const influxDB = influx.login({
         url: settings.influx.uri,         // get from options
         token: settings.influx.token,     // get from options
@@ -161,13 +170,30 @@ module.exports = (app) => {
                     metrics = []
                 }
                 // trigger board switch
-                let state = app.getSelfPath(NAVSTATE).value
-                if (currentState && currentState !== state) {
+                let state = app.getSelfPath(NAVSTATE)
+                if (state && currentState && currentState !== state.value) {
                   let current = currentState
-                  grafana.next(state, () => {
-                      app.debug(`Switched board from ${current} to ${state}`)                      
+                  grafana.next(state.value, () => {
+                      app.debug(`Switched board from ${current} to ${state.value}`)                      
                     })
-                    currentState = state
+                    currentState = state.value
+                }
+                let sunrise = app.getSelfPath(SUNRISE)
+                let sunset = app.getSelfPath(SUNSET)
+                // change screen configuration
+                if (screenConfig.hasOwnProperty('brightness') && screenConfig.brightness>=0 && screenConfig.brightness<=255) {
+                  const now = DateTime.utc().toMillis()
+                  const value = !sunrise && !sunset ? screenConfig.daytime : 
+                    sunset && now > DateTime.fromISO(sunset.value).toMillis() ? 
+                      screenConfig.nighttime : 
+                    sunrise && now > DateTime.fromISO(sunrise.value).toMillis() ? 
+                      screenConfig.daytime : 128
+                  if (value!==screenConfig.brightness) {
+                    grafana.set('brightness', value, (val) => {
+                      app.debug(`Screen brightness set to ${val}`)
+                      screenConfig.brightness = val || 0
+                    })
+                  }
                 }
               }, influxConfig.frequency*1000)
               app.debug (`Interval started, upload frequency: ${influxConfig.frequency}s`)
@@ -231,6 +257,7 @@ module.exports = (app) => {
                     })
                 }
               );
+              // launch grafana dashboard
               if (kiosk) {
                 grafana.check("launching grafana dashboard...", (status) => {
                   grafana.launch(status, (pid) => {
@@ -239,6 +266,7 @@ module.exports = (app) => {
                   })
                 })
               }
+              // set plugin status to started               
               app.setPluginStatus('Started');
               app.debug('Plugin started');
             }, 5000, debug);        
@@ -419,6 +447,30 @@ module.exports = (app) => {
                     description: 'configuration params on dashboard launch',
                     default: ''
                   },
+                }
+              },
+              screen: {
+                type: "object",
+                title: "Screen Configuration",
+                properties: {
+                  brightness: {
+                    type: 'boolean',
+                    title: 'Adapt screen brightness',
+                    description: 'change brightness according to time of day',
+                    default: false
+                  },                  
+                  daytime: {
+                    type: 'number',
+                    title: 'Daytime brightness',
+                    description: 'value between 0 and 255',
+                    default: 225
+                  }, 
+                  nighttime: {
+                    type: 'number',
+                    title: 'Nighttime brightness',
+                    description: 'value between 0 and 255',
+                    default: 15
+                  },                    
                 }
               },
               boards: {

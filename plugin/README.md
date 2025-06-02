@@ -142,7 +142,7 @@ sudo grafana-cli plugins install volkovlabs-echarts-panel
 ### Spectraphilic Windrose
 Another option is a windrose panel developed by Spectraphilic; it is still under development but may fulfill the needs.
 
-![Wind-Rose](../img/spectraphillic-windrose.png)
+![Wind-Rose](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/spectraphillic-windrose.png)
 
 Enable dev mode within grafana by editing  `/etc/grafana/grafana.ini`:
 ```
@@ -177,7 +177,7 @@ In case Grafana and SignalK services not running on the same host also remote ex
 
 | Host Config | Kiosk Config |
 | ----------- | ------------ |
-| ![Host Configuration](../img/host-config.png) | ![Remote Exec](../img/remote-exec.png) |
+| ![Host Configuration](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/host-config.png) | ![Remote Exec](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/remote-exec.png) |
 
 In addition add the path to the appropriate keyfile to the plugin configuration within :
 ```
@@ -207,11 +207,11 @@ Variety of parameters may change depending on version - the following represent 
 
 Unique IDs for dashbards and their parameters can be determined from the grafana UI and shall be configured accordingly in the plugin:
 
-![Grafana Url](../img/grafana-url-params.png)
+![Grafana Url](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/grafana-url-params.png)
 
 *Note: It is advisable not to configure variables as parameters as they are usually calculated from Influx during regular refreshes*
 
-![Dashboard Configuration](../img/dashboard-config.png)
+![Dashboard Configuration](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/dashboard-config.png)
 
 ## Upload path configration
 
@@ -248,15 +248,20 @@ Environmentals (if not covered by signalk-barograph):
 
 ### Dashboard Moored
 
-![moored](../img/sample-moored.png)
+![moored](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/sample-moored.png)
 
 ### Dashboard Sailing
 
-![sailing](../img/sample-sailing.png)
+![sailing](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/sample-sailing.png)
 
 ### Dashboard Sailing
 
-![motoring](../img/sample-motoring.png)
+![motoring](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/sample-motoring.png)
+
+## Release Notes
+- v0.2 Alpha Test
+- v0.3 Beta Test
+- v0.4 Brightness changing aligned to sunrise & sunset 
 
 ## Notes & References
 
