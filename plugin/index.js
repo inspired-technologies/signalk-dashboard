@@ -191,6 +191,8 @@ module.exports = (app) => {
                   const value = !sunrise && !sunset ? screenConfig.daytime : 
                     sunset && now > DateTime.fromISO(sunset.value).toMillis() ? 
                       screenConfig.nighttime : 
+                    sunset && sunrise && now < DateTime.fromISO(sunrise.value).toMillis() ? 
+                      screenConfig.nighttime : 
                     sunrise && now > DateTime.fromISO(sunrise.value).toMillis() ? 
                       screenConfig.daytime : 128
                   if (value!==screenConfig.brightness) {
