@@ -1,11 +1,11 @@
 {
   "name": "signalk-dashboard",
-  "version": "0.4.1",
+  "version": "0.4.3",
   "description": "Server plugin & Grafana dashboard for SignalK data",
   "main": "index.js",
   "scripts": {
-    "test": "echo \\\"Error: no test specified\\\" && exit 1",
-    "debug": "node --inspect-brk=192.168.0.97:9229 /usr/lib/node_modules/signalk-server/bin/signalk-server"
+    "debug": "node --inspect-brk=192.168.0.97:9229 /usr/lib/node_modules/signalk-server/bin/signalk-server -c /home/pi/signalk",
+    "test": "echo \\\"Error: no test specified\\\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -26,9 +26,9 @@
     "@influxdata/influxdb-client": "^1.35.0",
     "@influxdata/influxdb-client-apis": "^1.35.0",
     "@signalk/signalk-schema": "^1.7.2",
-    "debug": "^4.4.0",
+    "debug": "^4.4.1",
     "js-yaml": "^4.1.0",
-    "luxon": "^3.5.0",
+    "luxon": "^3.7.1",
     "ssh2": "^1.16.0"
   }
 }

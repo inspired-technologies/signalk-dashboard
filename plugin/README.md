@@ -132,7 +132,7 @@ Next to the standard set of panels some non-standard grafana plugins may be of i
 
 Displaying a graphical chart with wind speed & direction over time can be accomplished with `Business Charts` provided as part of the Grafana plugins library
 
-![Wind-Graph](../img/volkow-wind-chart.png)
+![Wind-Graph](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/volkow-wind-chart.png)
 
 Activate the `VolkovLab eCharts` via
 ```
@@ -254,7 +254,7 @@ Environmentals (if not covered by signalk-barograph):
 
 ![sailing](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/sample-sailing.png)
 
-### Dashboard Sailing
+### Dashboard Motoring
 
 ![motoring](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/sample-motoring.png)
 
