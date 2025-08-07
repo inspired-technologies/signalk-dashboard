@@ -185,6 +185,23 @@ module.exports = (app) => {
                 }
                 let sunrise = app.getSelfPath(SUNRISE)
                 let sunset = app.getSelfPath(SUNSET)
+                // push sunrise & sunset to metrics
+                if (sunrise && sunrise.value) {
+                  const path = influxConfig.pathConfig[SUNRISE] ? influxConfig.pathConfig[SUNRISE] : SUNRISE
+                  const values = !influxConfig.valueConfig[SUNRISE] ? sunrise.value : 
+                    convert.toTarget(influxConfig.valueConfig[SUNRISE].split('|>')[0], sunrise.value, influxConfig.valueConfig[SUNRISE].split('|>')[1]).value
+                  const metric = influx.format(path, values, DateTime.utc(), source(sunrise))
+                  if (metric!==null && updateVal(path, metric.timestamp, 1000))
+                    metrics.push(metric)
+                }
+                if (sunset && sunset.value) {
+                  const path = influxConfig.pathConfig[SUNSET] ? influxConfig.pathConfig[SUNSET] : SUNSET
+                  const values = !influxConfig.valueConfig[SUNSET] ? sunset.value : 
+                    convert.toTarget(influxConfig.valueConfig[SUNSET].split('|>')[0], sunset.value, influxConfig.valueConfig[SUNSET].split('|>')[1]).value
+                  const metric = influx.format(path, values, DateTime.utc(), source(sunset))
+                  if (metric!==null && updateVal(path, metric.timestamp, 1000))
+                    metrics.push(metric)
+                }
                 // change screen configuration
                 if (screenConfig.hasOwnProperty('brightness') && screenConfig.brightness>=0 && screenConfig.brightness<=255) {
                   const now = DateTime.utc().toMillis()
