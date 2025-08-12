@@ -72,7 +72,7 @@ function addnewpath (path, dynamicpath, log)
       influxConfig.pathConfig[path] = influxConfig.pathConfig[dynamicpath].replace('*', item)
     if (influxConfig.valueConfig[dynamicpath])
       influxConfig.valueConfig[path] = influxConfig.valueConfig[dynamicpath].replace('*', item)
-    log(`New '${item}' for path '${dynamicpath}' identified and subscribed!`)
+    log(`'${item}' for path '${dynamicpath}' identified and subscribed!`)
   }
 }
 
@@ -145,7 +145,7 @@ module.exports = (app) => {
           app.debug('Plugin initialized - sending metrics');
 
           config.forEach(c => {            
-            let value = !c.hasOwnProperty("key") ? app.getSelfPath(c.path) : app.getSelfPath(c.path)[c.key]
+            let value = !c.hasOwnProperty("key") || !app.getSelfPath(c.path) ? app.getSelfPath(c.path) : app.getSelfPath(c.path)[c.key]
             if (value===undefined || value===null) {
               app.debug(`No value for ${c.path} found, skipping config metric`)
               return

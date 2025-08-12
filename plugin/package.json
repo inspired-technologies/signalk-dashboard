@@ -1,6 +1,6 @@
 {
   "name": "signalk-dashboard",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Server plugin & Grafana dashboard for SignalK data",
   "main": "index.js",
   "scripts": {
