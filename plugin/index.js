@@ -131,7 +131,7 @@ module.exports = (app) => {
         token: settings.influx.token,     // get from options
         timeout: 10 * 1000,               // 10sec timeout for health check
       }, influxConfig.cacheDir, debug)
-      initialized = influx.health(influxDB, debug, (influxDB, result) => {
+      initialized = influx.health(influxDB, (influxDB, result) => {
         if (initialized && result.status === 'pass' ) {
           app.debug({
             influx: settings.influx.uri,

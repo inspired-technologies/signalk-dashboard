@@ -114,18 +114,23 @@ function check(dir, file) {
 }
 
 function login(clientOptions, cachedir, debug) {
+    log = debug
     try {
         const influxDB = new InfluxDB(clientOptions)
-        let cacheDir = cachedir
-        let log = debug
-        log ("Influx Login successful")
+        cacheDir = cachedir
+        log("Influx Login successful")
         return influxDB
     } catch (err) {
-        log ("Error logging into influx: "+err)         
+        log("Error logging into influx: "+err)         
     }
 }
 
-async function health (influxDB, log, callback) {
+async function health (influxDB, callback) {
+    if (!influxDB) {
+        log("Influx healthCheck: No client!")
+        return false
+    }
+
     log("Determining influx health")
     const healthAPI = new HealthAPI(influxDB)
     
@@ -136,7 +141,7 @@ async function health (influxDB, log, callback) {
         return callback(influxDB, result) 
    })
     .catch(error => {
-        log("HealthCheck Error: "+error)
+        log("HealthCheck "+error)
         return false
     })
 }
