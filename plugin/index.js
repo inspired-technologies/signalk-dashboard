@@ -23,7 +23,6 @@ const SUNRISE = 'environment.sunlight.times.sunrise'
 const SUNSET = 'environment.sunlight.times.sunset'
 let initialized = false;
 let kiosk = false;
-let overwriteTimeWithNow = false;
 let currentState
 let metrics = []
 let descriptions = []
@@ -48,6 +47,7 @@ let buckets = [
 
 let influxConfig = {}
 let screenConfig = {}
+let valueCache = {}
 let updates = {}
 let timer
 
@@ -130,11 +130,11 @@ module.exports = (app) => {
         url: settings.influx.uri,         // get from options
         token: settings.influx.token,     // get from options
         timeout: 10 * 1000,               // 10sec timeout for health check
-      }, influxConfig.cacheDir, debug)
+      }, influxConfig.cacheDir, app.debug)
       initialized = influx.health(influxDB, (influxDB, result) => {
         if (initialized && result.status === 'pass' ) {
           app.debug({
-            influx: settings.influx.uri,
+            // influx: settings.influx.uri,
             organization: settings.influx.org,
             buckets: {
               signalk: settings.influx.signalk,
@@ -158,7 +158,7 @@ module.exports = (app) => {
           timer = setInterval( (debug) => {
               app.debug (`Uploading ${metrics.length} data points to Influx`)
               if (metrics.length !== 0) {
-                  influx.post(influxDB, metrics, influxConfig, debug)
+                  influx.post(influxDB, metrics, influxConfig)
                   metrics.forEach(m => descriptions.push(m))
                 }
               updates["descriptions"] = DateTime.utc().toMillis()
@@ -170,12 +170,12 @@ module.exports = (app) => {
                 app.debug (`Sending ${metrics.length} data points to be uploaded to influx`)
                 // write to influx
                 if (metrics.length !== 0) {
-                    influx.post(influxDB, metrics, influxConfig, app.debug)
+                    influx.post(influxDB, metrics, influxConfig)
                     influx.buffer(metrics)
                     metrics = []
                 }
                 // trigger board switch
-                let state = app.getSelfPath(NAVSTATE)
+                let state = app.getSelfPath(NAVSTATE) || { value: 'default' }
                 if (state && currentState && currentState !== state.value) {
                   let current = currentState
                   grafana.next(state.value, () => {
@@ -183,16 +183,19 @@ module.exports = (app) => {
                     })
                     currentState = state.value
                 }
-                let sunrise = app.getSelfPath(SUNRISE)
-                let sunset = app.getSelfPath(SUNSET)
+                let sunrise = app.getSelfPath(SUNRISE) || valueCache[SUNRISE]
+                let sunset = app.getSelfPath(SUNSET) || valueCache[SUNSET]
                 // push sunrise & sunset to metrics
                 if (sunrise && sunrise.value) {
                   const path = influxConfig.pathConfig[SUNRISE] ? influxConfig.pathConfig[SUNRISE] : SUNRISE
                   const values = !influxConfig.valueConfig[SUNRISE] ? sunrise.value : 
                     convert.toTarget(influxConfig.valueConfig[SUNRISE].split('|>')[0], sunrise.value, influxConfig.valueConfig[SUNRISE].split('|>')[1]).value
                   const metric = influx.format(path, values, DateTime.utc(), source(sunrise))
-                  if (metric!==null && updateVal(path, metric.timestamp, 1000))
+                  if (metric!==null && updateVal(path, metric.timestamp, 1000)) {
                     metrics.push(metric)
+                    valueCache[path] = sunrise
+                    updates[path] = metric.timestamp
+                  }
                 }
                 if (sunset && sunset.value) {
                   const path = influxConfig.pathConfig[SUNSET] ? influxConfig.pathConfig[SUNSET] : SUNSET
@@ -200,7 +203,11 @@ module.exports = (app) => {
                     convert.toTarget(influxConfig.valueConfig[SUNSET].split('|>')[0], sunset.value, influxConfig.valueConfig[SUNSET].split('|>')[1]).value
                   const metric = influx.format(path, values, DateTime.utc(), source(sunset))
                   if (metric!==null && updateVal(path, metric.timestamp, 1000))
+                  {
                     metrics.push(metric)
+                    valueCache[path] = sunset
+                    updates[path] = metric.timestamp
+                  }
                 }
                 // change screen configuration
                 if (screenConfig.hasOwnProperty('brightness') && screenConfig.brightness>=0 && screenConfig.brightness<=255) {
@@ -251,7 +258,7 @@ module.exports = (app) => {
                         const path = influxConfig.pathConfig[u.values[0].path] ? influxConfig.pathConfig[u.values[0].path] : u.values[0].path
                         const values = !influxConfig.valueConfig[u.values[0].path] ? u.values[0].value : 
                             convert.toTarget(influxConfig.valueConfig[u.values[0].path].split('|>')[0], u.values[0].value, influxConfig.valueConfig[u.values[0].path].split('|>')[1]).value
-                        let timestamp = overwriteTimeWithNow ? DateTime.utc() : DateTime.fromISO(u.timestamp).toUTC()
+                        let timestamp = DateTime.fromISO(u.timestamp).toUTC()
                         // decide on descriptions to be updated
                         if (initialized && descriptions.length>0 && updateVal("descriptions", timestamp.toMillis(), 
                             influxConfig.retention*3600*1000-2*influxConfig.frequency*1000))
