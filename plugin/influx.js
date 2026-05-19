@@ -1,5 +1,5 @@
 /* 
-    Copyright © 2025 Inspired Technologies. All Rights Reserved.
+    Copyright © 2026 Inspired Technologies. All Rights Reserved.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -20,8 +20,10 @@ const { DateTime } = require('luxon')
 const fs = require('fs') 
 const path = require('path')
 const cache = require('./cache')
+const log = require("debug")("signalk-dashboard:influx")
 
-let log
+const BatchSize = 5000
+
 let cacheDir = ''
 let cacheBuffer = []
 
@@ -32,7 +34,7 @@ function buffer(metrics) {
 function flush(metrics) {
     if (metrics) {
       buffer(metrics)
-      cache.push(cacheBuffer, cacheDir, log)
+      cache.push(cacheBuffer, cacheDir)
     }
     return []
   }
@@ -70,6 +72,9 @@ function reconfig (path, config) {
       const param = config.split('~')
       const rotate = '*.'+path.split('.*')[0]+path.split('.*')[1]
       return param[0]+rotate+param[1]
+    } else if (config.includes('^')) {
+        // lookup
+        return config    
     }
     return null
 }
@@ -113,8 +118,7 @@ function check(dir, file) {
     return fs.existsSync(path.join(dir, file));
 }
 
-function login(clientOptions, cachedir, debug) {
-    log = debug
+function login(clientOptions, cachedir) {
     try {
         const influxDB = new InfluxDB(clientOptions)
         cacheDir = cachedir
@@ -137,7 +141,7 @@ async function health (influxDB, callback) {
     await healthAPI
     .getHealth()
     .then((result /* : HealthCheck */) => {
-        log('Influx healthCheck: ' + (result.status === 'pass' ? 'OK' : 'NOT OK'))
+        log('healthCheck: ' + (result.status === 'pass' ? 'OK' : 'NOT OK'))
         return callback(influxDB, result) 
    })
     .catch(error => {
@@ -146,7 +150,7 @@ async function health (influxDB, callback) {
     })
 }
 
-function post (influxdb, metrics, config, log) {
+function post (influxdb, metrics, config) {
     // [Required] Organization | Empty for 1.8.x
     // [Required] Bucket | Database/Retention Policy 
     // Precision of timestamp. [`ns`, `us`, `ms`, `s`]. The default would be `ns` for other data
@@ -155,16 +159,16 @@ function post (influxdb, metrics, config, log) {
     
     // write point with the appropriate (client-side) timestamp
     let measurements = {}
-    for (i=0; i<metrics.length; i++)
-    {
-        writeAPI.writePoint(metrics[i])
-        measurements[metrics[i].name] = (measurements[metrics[i].name] ? measurements[metrics[i].name]+1 : 1)
-    }
+    if (Array.isArray(metrics))
+        metrics.forEach(p => {
+            writeAPI.writePoint(p)
+            measurements[p.name] = (measurements[p.name] ? measurements[p.name]+1 : 1)
+        })
     writeAPI
         .close()
         .then(() => {
             log(measurements)
-            cacheResult = cache.load(config.cacheDir, log) 
+            cacheResult = cache.load(config.cacheDir) 
             if (cacheResult === false) {
                 return
             }
@@ -181,25 +185,28 @@ function post (influxdb, metrics, config, log) {
                     else
                         point.stringField(Object.keys(p.fields)[0], p.fields[Object.keys(p.fields)[0]])
                     points.push(point)
-                }) 
-                post(influxdb, points, config, log)
+                })
+                for (let i = 0; i < points.length; i += BatchSize) {
+                    const batch = points.slice(i, i + BatchSize);
+                        post(influxdb, batch, config)
+                }
             }
         })
         .catch(err => {
             // Handle errors
-            cache.push(cacheBuffer, config.cacheDir, log)
+            cache.push(cacheBuffer, config.cacheDir)
             cacheBuffer = []
             log(`Metrics not written due to ${err.message}`);
-            const cacheResult = cache.load(config.cacheDir, log)
+            const cacheResult = cache.load(config.cacheDir)
             if (cacheResult !== false) {
                 log(`${cacheResult.length} files cached`)
             }
         })
 }
- 
+
 function format (path, values, timestamp, skSource) {
     if (values === null){
-        values = 0
+        return null
     }
 
     //Set variables for metric
@@ -231,10 +238,11 @@ function format (path, values, timestamp, skSource) {
                     .booleanField(skPath[5], values)
                     break;
                 default:
-                    point = new Point(skPath[4])
-                    .tag(skPath[0], skPath[1])
-                    .tag(skPath[2], skPath[3])
-                    .floatField(skPath[5], values)
+                    if (!isNaN(values))
+                        point = new Point(skPath[4])
+                        .tag(skPath[0], skPath[1])
+                        .tag(skPath[2], skPath[3])
+                        .floatField(skPath[5], values)
                     break;
             }
             break;
@@ -260,10 +268,11 @@ function format (path, values, timestamp, skSource) {
                     .booleanField(skPath[4], values)
                     break;
                 default:
-                    point = new Point(skPath[3])
-                    .tag(skPath[0], skPath[1])
-                    .tag(skPath[1], skPath[2])
-                    .floatField(skPath[4], values)
+                    if (!isNaN(values))
+                        point = new Point(skPath[3])
+                        .tag(skPath[0], skPath[1])
+                        .tag(skPath[1], skPath[2])
+                        .floatField(skPath[4], values)
                     break;
             }
             break;
@@ -286,9 +295,10 @@ function format (path, values, timestamp, skSource) {
                     .booleanField(skPath[3], values)
                     break;
                 default:
-                    point = new Point(skPath[2])
-                    .tag(skPath[0], skPath[1])
-                    .floatField(skPath[3], values)
+                    if (!isNaN(values))
+                        point = new Point(skPath[2])
+                        .tag(skPath[0], skPath[1])
+                        .floatField(skPath[3], values)
                     break;
             }
             break;
@@ -311,9 +321,10 @@ function format (path, values, timestamp, skSource) {
                     .booleanField('value', values)
                     break;
                 default:
-                    point = new Point(skPath[2])
-                    .tag(skPath[0], skPath[1])
-                    .floatField('value', values)
+                    if (!isNaN(values))
+                        point = new Point(skPath[2])
+                        .tag(skPath[0], skPath[1])
+                        .floatField('value', values)
                     break;
             }
             break;
@@ -336,9 +347,10 @@ function format (path, values, timestamp, skSource) {
                     .booleanField('value', values)
                     break;
                 default:
-                    point = new Point(skPath[1])
-                    .tag(skPath[0], '')
-                    .floatField('value', values)
+                    if (!isNaN(values))
+                        point = new Point(skPath[1])
+                        .tag(skPath[0], '')
+                        .floatField('value', values)
                     break;
             }
             break;
@@ -348,7 +360,10 @@ function format (path, values, timestamp, skSource) {
             fields = null
             break;
     }
-   
+
+    // return with timestamp and source tag if available
+    if (point===null)
+        return null
     if (skSource && skSource!=='')
         point.tag('source', skSource)
     point.timestamp = (timestamp ? timestamp.toMillis() : DateTime.utc().toMillis())
