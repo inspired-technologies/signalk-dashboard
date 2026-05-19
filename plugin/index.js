@@ -66,13 +66,20 @@ function source(update) {
 
 function addnewpath (path, dynamicpath, log)
 {    
-  if (influxConfig.pathConfig[dynamicpath] || influxConfig.valueConfig[dynamicpath]) {
+  if (influxConfig.pathConfig[dynamicpath] || influxConfig.valueConfig[dynamicpath]) 
+  {
     let item = path.replace(dynamicpath.split('*')[0], '').replace(dynamicpath.split('*')[1], '')
     if (influxConfig.pathConfig[dynamicpath])
       influxConfig.pathConfig[path] = influxConfig.pathConfig[dynamicpath].replace('*', item)
     if (influxConfig.valueConfig[dynamicpath])
       influxConfig.valueConfig[path] = influxConfig.valueConfig[dynamicpath].replace('*', item)
     log(`'${item}' for path '${dynamicpath}' identified and subscribed!`)
+  } else if (dynamicpath!==path) {
+    influxConfig.pathConfig[path] = path
+    let item = path.replace(dynamicpath.split('*')[0], '').replace(dynamicpath.split('*')[1], '')
+    log(`'${item}' for path '${dynamicpath}' identified!`)
+  } else {
+    influxConfig.pathConfig[path] = path
   }
 }
 
@@ -130,7 +137,7 @@ module.exports = (app) => {
         url: settings.influx.uri,         // get from options
         token: settings.influx.token,     // get from options
         timeout: 10 * 1000,               // 10sec timeout for health check
-      }, influxConfig.cacheDir, app.debug)
+      }, influxConfig.cacheDir)
       initialized = influx.health(influxDB, (influxDB, result) => {
         if (initialized && result.status === 'pass' ) {
           app.debug({
@@ -155,8 +162,8 @@ module.exports = (app) => {
               metrics.push(metric)
           })
       
-          timer = setInterval( (debug) => {
-              app.debug (`Uploading ${metrics.length} data points to Influx`)
+          timer = setInterval( () => {
+              app.debug(`Uploading ${metrics.length} data points to Influx`)
               if (metrics.length !== 0) {
                   influx.post(influxDB, metrics, influxConfig)
                   metrics.forEach(m => descriptions.push(m))
@@ -167,7 +174,7 @@ module.exports = (app) => {
 
               // Restart time for uploading to influx
               timer = setInterval(() => {
-                app.debug (`Sending ${metrics.length} data points to be uploaded to influx`)
+                app.debug(`Sending ${metrics.length} data points to be uploaded to influx`)
                 // write to influx
                 if (metrics.length !== 0) {
                     influx.post(influxDB, metrics, influxConfig)
@@ -176,8 +183,9 @@ module.exports = (app) => {
                 }
                 // trigger board switch
                 let state = app.getSelfPath(NAVSTATE) || { value: 'default' }
-                if (state && currentState && currentState !== state.value) {
+                if (state && currentState && currentState !== state.value && state.value!==null) {
                   let current = currentState
+
                   grafana.next(state.value, () => {
                       app.debug(`Switched board from ${current} to ${state.value}`)                      
                     })
@@ -227,7 +235,7 @@ module.exports = (app) => {
                   }
                 }
               }, influxConfig.frequency*1000)
-              app.debug (`Interval started, upload frequency: ${influxConfig.frequency}s`)
+              app.debug(`Interval started, upload frequency: ${influxConfig.frequency}s`)
               
               // Get data only for self context
               app.subscriptionmanager.subscribe (

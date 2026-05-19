@@ -1,5 +1,5 @@
 /* 
-    Copyright © 2025 Inspired Technologies. All Rights Reserved.
+    Copyright © 2026 Inspired Technologies. All Rights Reserved.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -20,25 +20,26 @@ const { DateTime } = require('luxon')
 const fs = require('fs') 
 const path = require('path')
 const cache = require('./cache')
-const BatchSize = 500
+const log = require("debug")("signalk-dashboard:influx")
 
-let log
+const BatchSize = 5000
+
 let cacheDir = ''
 let cacheBuffer = []
 
-function buffer (metrics) {
+function buffer(metrics) {
     metrics.forEach(m => cacheBuffer.push(m))
 }
 
-function flush (metrics) {
+function flush(metrics) {
     if (metrics) {
       buffer(metrics)
-      cache.push(cacheBuffer, cacheDir, log)
+      cache.push(cacheBuffer, cacheDir)
     }
     return []
   }
 
-function config (configfile, interval) {
+function config(configfile, interval) {
     if (interval<1000) interval = 1000
     if (fs.existsSync(configfile))
         try
@@ -72,13 +73,13 @@ function reconfig (path, config) {
       const rotate = '*.'+path.split('.*')[0]+path.split('.*')[1]
       return param[0]+rotate+param[1]
     } else if (config.includes('^')) {
-      // lookup
-      return config    
+        // lookup
+        return config    
     }
     return null
 }
 
-function match (paths, actual)
+function match(paths, actual)
 {
     if (!Array.isArray(paths))
         return ''
@@ -102,7 +103,7 @@ function match (paths, actual)
     return found
 }
 
-function save (dir, file, content) {
+function save(dir, file, content) {
     fs.writeFileSync(
         path.join(dir, file),
         JSON.stringify(content).concat("\n"), (err) => {
@@ -113,12 +114,11 @@ function save (dir, file, content) {
     return file
 }
 
-function check (dir, file) {
+function check(dir, file) {
     return fs.existsSync(path.join(dir, file));
 }
 
-function login (clientOptions, cachedir, debug) {
-    log = debug
+function login(clientOptions, cachedir) {
     try {
         const influxDB = new InfluxDB(clientOptions)
         cacheDir = cachedir
@@ -141,7 +141,7 @@ async function health (influxDB, callback) {
     await healthAPI
     .getHealth()
     .then((result /* : HealthCheck */) => {
-        log('Influx healthCheck: ' + (result.status === 'pass' ? 'OK' : 'NOT OK'))
+        log('healthCheck: ' + (result.status === 'pass' ? 'OK' : 'NOT OK'))
         return callback(influxDB, result) 
    })
     .catch(error => {
@@ -168,7 +168,7 @@ function post (influxdb, metrics, config) {
         .close()
         .then(() => {
             log(measurements)
-            cacheResult = cache.load(config.cacheDir, log) 
+            cacheResult = cache.load(config.cacheDir) 
             if (cacheResult === false) {
                 return
             }
@@ -194,16 +194,16 @@ function post (influxdb, metrics, config) {
         })
         .catch(err => {
             // Handle errors
-            cache.push(cacheBuffer, config.cacheDir, log)
+            cache.push(cacheBuffer, config.cacheDir)
             cacheBuffer = []
             log(`Metrics not written due to ${err.message}`);
-            const cacheResult = cache.load(config.cacheDir, log)
+            const cacheResult = cache.load(config.cacheDir)
             if (cacheResult !== false) {
                 log(`${cacheResult.length} files cached`)
             }
         })
 }
- 
+
 function format (path, values, timestamp, skSource) {
     if (values === null){
         return null

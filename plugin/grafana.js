@@ -2,8 +2,8 @@ const Proc = require('child_process').exec;
 const { Client } = require('ssh2');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const log = require('debug')('signalk-dashboard:grafana')
 
-let log
 let err = console.error
 let setStatus
 let setError
@@ -34,7 +34,6 @@ let rl = {
 
 function init (config, logger, set, err) {
     // store content to file
-    log = logger
     setStatus = set
     setError = err
     if (config && config.launch)
@@ -211,7 +210,9 @@ function modifyLocalYaml(file, url) {
         const data = yaml.load(fileContents);
 
         // Modify the URL parameter
-        if (data.target && data.target.URL) {
+        if (data.hasOwnProperty('target') && data.target && 
+            data.target.hasOwnProperty('URL') && data.target.URL) 
+        {
             data.target.URL = url;
         } else {
             throw new Error('URL parameter not found in the YAML file.');
@@ -238,30 +239,36 @@ function modifyRemoteYaml(file, url, callback) {
 
                 // Read the remote YAML file
                 sftp.readFile(file, 'utf8', (err, data) => {
-                    if (err) throw err;
-
-                    // Parse the YAML file
-                    let yamlData = yaml.load(data);
-
-                    // Modify the URL parameter
-                    if (yamlData.target && yamlData.target.URL) {
-                        yamlData.target.URL = url;
-                    } else {
-                        throw new Error('URL parameter not found in the YAML file.');
-                    }
-
-                    // Convert the modified data back to YAML
-                    const newYaml = yaml.dump(yamlData);
-
-                    // Write the modified YAML back to the remote file
-                    sftp.writeFile(file, newYaml, 'utf8', (err) => {
+                    try
+                    {
                         if (err) throw err;
-                        log('Board URL updated on remote');
-                        conn.end();
-                    });
 
-                    // next action
-                    callback()
+                        // Parse the YAML file
+                        let yamlData = yaml.load(data);
+
+                        // Modify the URL parameter
+                        if (yamlData.target && yamlData.target.URL) {
+                            yamlData.target.URL = url;
+                        } else {
+                            throw new Error('URL parameter not found in the YAML file.');
+                        }
+
+                        // Convert the modified data back to YAML
+                        const newYaml = yaml.dump(yamlData);
+
+                        // Write the modified YAML back to the remote file
+                        sftp.writeFile(file, newYaml, 'utf8', (err) => {
+                            if (err) throw err;
+                            log('Board URL updated on remote');
+                            conn.end();
+                        });
+
+                        // next action
+                        callback()
+                    } catch (e) {
+                        conn.end();
+                        log(`Error updating the board URL: ${e}`);
+                    }
                 });
             });
         }).connect({
