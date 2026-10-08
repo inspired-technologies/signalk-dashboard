@@ -26,9 +26,7 @@ let kiosk = false;
 let currentState
 let metrics = []
 let descriptions = []
-let unsubscribes = [
-  influx.flush
-]
+let unsubscribes = []
 influx.buffer(metrics)
 
 let config = [
@@ -342,6 +340,8 @@ module.exports = (app) => {
     stop: () => {
       unsubscribes.forEach(f => f());
       unsubscribes = [];
+      // persist any metrics still buffered, also when influx was never configured
+      metrics = influx.flush(metrics, influxConfig.cacheDir ? influxConfig.cacheDir : app.getDataDirPath());
       // shutdown
       debug("stopping");
       timer && clearInterval(timer);
