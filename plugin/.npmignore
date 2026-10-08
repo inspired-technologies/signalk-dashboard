@@ -4,6 +4,9 @@
 #github
 .github
 
+# Tests
+test
+
 # Logs
 logs
 *.log
