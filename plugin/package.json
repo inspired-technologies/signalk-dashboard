@@ -1,11 +1,11 @@
 {
   "name": "signalk-dashboard",
-  "version": "0.6.2",
+  "version": "0.6.5",
   "description": "Server plugin & Grafana dashboard for SignalK data",
   "main": "index.js",
   "scripts": {
     "debug": "node --inspect-brk=192.168.0.97:9229 /usr/lib/node_modules/signalk-server/bin/signalk-server -c /home/pi/signalk",
-    "test": "echo \\\"Error: no test specified\\\" && exit 1"
+    "test": "node --test test/*.test.js"
   },
   "repository": {
     "type": "git",
@@ -30,5 +30,9 @@
     "js-yaml": "^5.2.3",
     "luxon": "^3.7.2",
     "ssh2": "^1.17.0"
+  },
+  "allowScripts": {
+    "cpu-features@0.0.10": true,
+    "ssh2@1.17.0": true
   }
 }
