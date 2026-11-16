@@ -97,6 +97,8 @@ kill <id returned from previous cmd>
 
 ### Grafana Kiosk cli test
 
+Install the latest grafana-kiosk release first - see __[Grafana Kiosk](./kiosk.md)__ for download, install and the system service.
+
 Create or modify the `grafana-kiosk` yaml configuration to load your default dashboard:
 ```
 general:
@@ -260,7 +262,9 @@ Environmentals (if not covered by signalk-barograph):
 
 ## Screen brightness
 
-With *Adapt screen brightness* switched on, the plugin sets the display backlight (`/sys/class/backlight/*/brightness` on the kiosk host, 0-255) to the *Daytime brightness* between sunrise and sunset and to the *Nighttime brightness* otherwise. Sunrise and sunset are read from `environment.sunlight.times.sunrise` / `sunset` (eg. published by the OpenWeather or Open-Meteo plugin) and taken as times of the local day in the time zone of the SignalK host - whichever day a source published them for. Without sunrise / sunset the brightness is left unchanged.
+With *Adapt screen brightness* switched on, the plugin sets the display backlight (`/sys/class/backlight/*/brightness` on the kiosk host, 0-255) to the *Daytime brightness* between sunrise and sunset and to the *Nighttime brightness* otherwise. Sunrise and sunset are read from `environment.sunlight.times.sunrise` / `sunset` - preferably from the __[derived-data](https://www.npmjs.com/package/signalk-derived-data)__ plugin (*Sun Time*, computed from position and time), otherwise from the source the server selects (eg. the OpenWeather or Open-Meteo plugin) - and taken as times of the local day in the time zone of the SignalK host, whichever day a source published them for. Without sunrise / sunset the brightness is left unchanged.
+
+The backlight is read back every 10 minutes and restored if something else changed it (eg. display wake-up). Board switching and brightness work without InfluxDB; sunrise and sunset are uploaded to InfluxDB when they change, otherwise hourly.
 
 ## Release Notes
 

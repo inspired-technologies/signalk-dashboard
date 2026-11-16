@@ -7,14 +7,26 @@
 - Without sunrise / sunset (no source yet, polar day or night) the brightness is kept - it was reset to the daytime value; the last known times are used as fallback also for renamed influx paths.
 - Shared influx / cache: InfluxDB points carry the time of measurement, replayed cache points keep their tags and field type, cache files are removed only after a confirmed write, written atomically, limited to 100 MB / 30 days.
 - Flushing the cache on stop when InfluxDB was never configured.
+- Board switching and screen brightness no longer depend on InfluxDB - they ran in the upload timer, which only started after a passing health check.
+- A navigation state without a configured board shows the default board - on the first tab it threw in the timer.
+- Brightness control without a launch configuration (local kiosk) failed on an undefined command.
+- Stopping the plugin during the InfluxDB health check or the start delay no longer starts the subscription afterwards.
+- Sunrise / sunset are uploaded when they change, otherwise hourly - since the shared influx update only once per start (before: on every upload tick).
+- Empty object values are no longer uploaded.
 
 ### Feature
+- Sunrise / sunset preferably from the derived-data plugin (computed from position and time).
+- The backlight is read back every 10 minutes and restored when something else changed it (eg. display wake-up).
+- Pending offline cache files are shown on the plugin state; from half of the size or age limit, or once data had to be dropped, the state turns into an error.
+- Logging via the `signalk-dashboard` debug log.
 - Shared skunits update: missing values stay missing instead of 0, Beaufort conversions, additional units.
 - Automated tests (`npm test`) and SignalK Plugin CI.
 
 ### Update
 - Package updates (`js-yaml` 5.5, `@signalk/signalk-schema` 1.8.6).
 - SignalK Plugin CI runs in `plugin/` (`repository.directory`), the change log moved from the README to `CHANGELOG.md`.
+- npm release via trusted publishing (OIDC) instead of an npm token; `engines`, `signalk.displayName` and a `files` list in package.json.
+- The grafana-kiosk binary is no longer kept in the repository - [kiosk.md](plugin/kiosk.md) describes how to install the latest release.
 
 ## [0.6.2]
 - Package updates.
