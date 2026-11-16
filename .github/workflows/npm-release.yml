@@ -1,70 +1,68 @@
-# NPM Plugin Release
+# NPM Release - npm trusted publishing (OIDC), no long-lived npm token.
+# Prerequisite on npmjs.com: package settings > Trusted publisher > GitHub Actions
+#   organization/user: inspired-technologies, repository: signalk-dashboard, workflow: npm-release.yml
 name: npm-release
 
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   publish:
-    name: Check release to NPM
-    runs-on: ubuntu-latest
-    env:
-      working-directory: ./plugin
+    name: Release to NPM
+    runs-on: ubuntu-latest      # trusted publishing requires GitHub-hosted runners
+    permissions:
+      contents: write           # create the GitHub release
+      id-token: write           # OIDC token for npm trusted publishing
+    defaults:
+      run:
+        working-directory: ./plugin   # the npm package lives in plugin/
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
+
+      # Compares with the registry - unlike a lookup of package.json on unpkg also for versions never published.
       - name: Check if version has been updated
         id: check
-        uses: EndBug/version-check@v2
-        with:
-          file-url: https://unpkg.com/signalk-dashboard@latest/package.json
-          file-name: ./plugin/package.json
-          static-checking: localIsNew
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          published=$(npm view "$name@$version" version 2>/dev/null || true)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$published" = "$version" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Non release change - $name@$version is already published"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "New version $name@$version"
+          fi
 
-      - name: Log when unchanged
-        if: steps.check.outputs.changed == 'false'
-        run: 'echo "Non release change"'
-        working-directory: ${{env.working-directory}}
-
-      - name: Log when changed
+      - name: Install and test
         if: steps.check.outputs.changed == 'true'
-        run: 'echo "Version changed commit ${{ steps.check.outputs.commit }}! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
-        working-directory: ${{env.working-directory}}
+        run: |
+          npm install -g npm@11
+          npm install
+          npm test
+
+      - name: Publish Package
+        if: steps.check.outputs.changed == 'true'
+        run: npm publish --access public
 
       - name: Create Release
         if: steps.check.outputs.changed == 'true'
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ steps.check.outputs.version }}
-          release_name: Release ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})
-          body: |
-            New release to NPM
-            - Tagged to ${{ steps.check.outputs.version }}
-            - Release ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})
-          draft: true
-          prerelease: false
-          
-      - name: Setup Node
-        if: steps.check.outputs.changed == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org/
-      - name: Install Package 
-        if: steps.check.outputs.changed == 'true'
-        run: npm install
-        working-directory: ${{env.working-directory}}
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
-      - name: Publish Package 
-        if: steps.check.outputs.changed == 'true'
-        run: npm publish --access public
-        working-directory: ${{env.working-directory}}
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          gh release create "$VERSION" --target "$GITHUB_SHA" \
+            --title "Release $VERSION" \
+            --notes "New release to NPM - signalk-dashboard@$VERSION - see CHANGELOG.md"

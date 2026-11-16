@@ -3,6 +3,20 @@
   "version": "0.6.6",
   "description": "Server plugin & Grafana dashboard for SignalK data",
   "main": "index.js",
+  "files": [
+    "index.js",
+    "grafana.js",
+    "screen.js",
+    "influx.js",
+    "cache.js",
+    "skunits.js",
+    "pathconfig.sample.json",
+    "README.md",
+    "kiosk.md",
+    "telegraf.md",
+    "pubkey.md",
+    "LICENSE"
+  ],
   "scripts": {
     "debug": "node --inspect-brk=192.168.0.97:9229 /usr/lib/node_modules/signalk-server/bin/signalk-server -c /home/pi/signalk",
     "test": "node --test test/*.test.js"
@@ -35,5 +49,11 @@
   "allowScripts": {
     "cpu-features@0.0.10": true,
     "ssh2@1.17.0": true
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "signalk": {
+    "displayName": "SignalK to Grafana Dashboard"
   }
 }
