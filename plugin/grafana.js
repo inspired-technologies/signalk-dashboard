@@ -12,12 +12,13 @@ const checkchrom = "pgrep chromium | head -1"
 const checkkiosk = "sudo systemctl status grafana-kiosk | grep 'Active:' | awk '{print $2}'"
 const closebrowser = "kill {pid}"
 const setbrightness = "echo {val} | sudo tee /sys/class/backlight/*/brightness"
+const getbrightness = "cat /sys/class/backlight/*/brightness | head -1"
 const chromium = "chromium-browser {uri} {params}"
 const tabbed  = "chromium-browser [tabs] {params}"
 const nexttab = "wtype -M ctrl -P Tab"
 const kiosk = "sudo systemctl restart {service}"
 let command
-let exec
+let exec = '{cmd}'          // local execution unless a remote command is configured
 let boards = {
     default: {}
 }
@@ -36,6 +37,10 @@ function init (config, logger, set, err) {
     // store content to file
     setStatus = set
     setError = err
+    exec = '{cmd}'
+    command = undefined
+    boards = { default: {} }
+    current.board = undefined
     if (config && config.launch)
     {
         boards.default = {
@@ -152,22 +157,20 @@ function next (state, callback) {
 }
 
 function nextTab (state, callback) {
-    let next = 0
     let length = Object.keys(boards).length
     let steps = 0
-    if (!boards.hasOwnProperty(state) && current.board !== 0)
-        next = 0
-    else
-        next = boards[state].tab
-    if (current.board !== next)
-        steps = next > current.board ? next - current.board : length - current.board + next
+    // states without a board of their own show the default board (tab 0)
+    const next = boards.hasOwnProperty(state) ? boards[state].tab : 0
+    const from = current.board || 0
+    if (from !== next)
+        steps = next > from ? next - from : length - from + next
     if (steps !== 0)
     {
         let cmd = nexttab
-        for (i=1; i<steps; i++)
+        for (let i=1; i<steps; i++)
             cmd += ` && sleep 1 && ${nexttab} `
 
-        log(`Switching tab from ${current.board} to ${next} ...`)
+        log(`Switching tab from ${from} to ${next} ...`)
         Proc(exec.replace("{cmd}", cmd), (error,stdout,stderr) => {
             if (error) {
                 err( `exec error: ${error ? error : stderr}` );
@@ -282,13 +285,14 @@ function modifyRemoteYaml(file, url, callback) {
     }
 }
 
-function set (param, value, callback) {
+// force: write even if the value was set before, eg. after something else changed the backlight
+function set (param, value, callback, force = false) {
     switch (param) {
-        case 'brightness': 
+        case 'brightness':
             if (!value || value < 0 || value > 255) {
                 log(`Invalid brightness value: ${value}`)
                 callback(current.brightness)
-            } else if (value !== current.brightness) {
+            } else if (force || value !== current.brightness) {
                 // log(`Setting brightness to ${value} ...`)
                 Proc(exec.replace("{cmd}", setbrightness.replace("{val}", value)), (error,stdout,stderr) => {
                     if (error) {
@@ -311,10 +315,32 @@ function set (param, value, callback) {
     }
 }
 
+// read a screen param - callback(undefined) if it cannot be read
+function get (param, callback) {
+    switch (param) {
+        case 'brightness':
+            Proc(exec.replace("{cmd}", getbrightness), (error,stdout,stderr) => {
+                const value = parseInt(String(stdout || '').trim(), 10)
+                if (error || Number.isNaN(value)) {
+                    log(`Brightness not readable: ${error ? error.message : stderr || stdout}`)
+                    callback(undefined)
+                    return
+                }
+                callback(value)
+            })
+            break;
+        default:
+            log(`Screen configuration - invalid parameter: ${param}`)
+            callback(undefined)
+            break;
+    }
+}
+
 module.exports = {
     init,       // initialize environment
     check,      // check kiosk service is already runnning
     launch,     // launch kiosk service
     next,       // switch visible board to new state
-    set         // set board param to value (eg. brightness)
+    set,        // set board param to value (eg. brightness)
+    get         // read board param (eg. brightness)
 }

@@ -1,6 +1,6 @@
 /*
     Copyright © 2025 Inspired Technologies GmbH (www.inspiredtechnologies.eu)
- 
+
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
     in the Software without restriction, including without limitation the rights
@@ -16,48 +16,33 @@ const { DateTime } = require('luxon');
 const { getSourceId } = require('@signalk/signalk-schema')
 const path = require('path')
 const influx = require('./influx');
+const cache = require('./cache');
 const convert = require("./skunits")
 const grafana = require('./grafana');
 const screen = require('./screen');
+const log = require('debug')('signalk-dashboard')
+
 const NAVSTATE = 'navigation.state'
 const SUNRISE = 'environment.sunlight.times.sunrise'
 const SUNSET = 'environment.sunlight.times.sunset'
-let initialized = false;
-let kiosk = false;
-let currentState
-let metrics = []
-let descriptions = []
-let unsubscribes = []
-influx.buffer(metrics)
+const SUN_SOURCE = 'derived-data'           // signalk-derived-data computes sunrise / sunset from position and time
+const SUN_UPLOAD = 60 * 60 * 1000           // sunrise / sunset uploaded on change, otherwise hourly
+const BACKLIGHT_CHECK = 10 * 60 * 1000      // backlight read back - restored when something else changed it
+const START_DELAY = 5000                    // kiosk launch and first upload after start
 
-let config = [
+const config = [
   { metric: "label.vessel.description.name", path: "name" },
   { metric: "label.vessel.description.mmsi", path: "mmsi" },
   { metric: "label.vessel.description.callsign", path: "communication", key: "callsignVhf" }
 ]
-let hosts = [
+const hosts = [
   { metric: "label.host.description.signalk", path: "signalk" },
   { metric: "label.host.description.influx", path: "influx" }
 ]
-let buckets = [
+const buckets = [
   { metric: "label.bucket.description.signalk", path: "signalk" },
   { metric: "label.bucket.description.telegraf", path: "telegraf" }
 ]
-
-let influxConfig = {}
-let screenConfig = {}
-let valueCache = {}
-let updates = {}
-let timer
-
-function updateVal(path, time, interval) {
-  return updates[path] && updates[path]!==null ? (time-updates[path])>interval : true;
-}
-
-// value object with a valid time, eg. { value: '2026-11-16T06:20:00.000Z', $source: ... }
-function known(time) {
-  return time && typeof time.value === 'string' && DateTime.fromISO(time.value).isValid ? time : undefined
-}
 
 function source(update) {
   if (update['$source']) {
@@ -68,33 +53,319 @@ function source(update) {
   return ''
 }
 
-function addnewpath (path, dynamicpath, log)
-{    
-  if (influxConfig.pathConfig[dynamicpath] || influxConfig.valueConfig[dynamicpath]) 
-  {
-    let item = path.replace(dynamicpath.split('*')[0], '').replace(dynamicpath.split('*')[1], '')
-    if (influxConfig.pathConfig[dynamicpath])
-      influxConfig.pathConfig[path] = influxConfig.pathConfig[dynamicpath].replace('*', item)
-    if (influxConfig.valueConfig[dynamicpath])
-      influxConfig.valueConfig[path] = influxConfig.valueConfig[dynamicpath].replace('*', item)
-    log(`'${item}' for path '${dynamicpath}' identified and subscribed!`)
-  } else if (dynamicpath!==path) {
-    influxConfig.pathConfig[path] = path
-    let item = path.replace(dynamicpath.split('*')[0], '').replace(dynamicpath.split('*')[1], '')
-    log(`'${item}' for path '${dynamicpath}' identified!`)
-  } else {
-    influxConfig.pathConfig[path] = path
+// ISO string of a sun time - strings as published, Date objects (derived-data) converted
+function isoTime(value) {
+  if (value instanceof Date)
+    return isNaN(value.getTime()) ? undefined : value.toISOString()
+  if (typeof value === 'string' && DateTime.fromISO(value).isValid)
+    return value
+  return undefined
+}
+
+// sunrise / sunset as { value, $source } - derived-data first, otherwise the value selected by the server
+function sunTime(selfPath) {
+  if (!selfPath)
+    return undefined
+  const derived = selfPath.values && selfPath.values[SUN_SOURCE]
+  const candidates = derived ? [Object.assign({ $source: SUN_SOURCE }, derived), selfPath] : [selfPath]
+  for (const candidate of candidates) {
+    const value = isoTime(candidate.value)
+    if (value)
+      return { value, $source: source(candidate) }
   }
+  return undefined
 }
 
 module.exports = (app) => {
+  let metrics = []
+  let descriptions = []
+  let unsubscribes = []
+  let influxConfig = {}
+  let screenConfig = {}
+  let valueCache = {}
+  let updates = {}
+  let uploaded = {}
+  let currentState
+  let kiosk = false
+  let uploadTimer
+  let screenTimer
+  let startTimers = []
+  let running = false         // guards the asynchronous influx health check against an early stop ...
+  let generation = 0          // ... and against a check of a previous start completing after a restart
+  let reported = ''
+  let backlightChecked = 0
+
+  function updateVal(path, time, interval) {
+    return updates[path] && updates[path]!==null ? (time-updates[path])>interval : true;
+  }
+
+  function addnewpath (path, dynamicpath)
+  {
+    if (influxConfig.pathConfig[dynamicpath] || influxConfig.valueConfig[dynamicpath])
+    {
+      let item = path.replace(dynamicpath.split('*')[0], '').replace(dynamicpath.split('*')[1], '')
+      if (influxConfig.pathConfig[dynamicpath])
+        influxConfig.pathConfig[path] = influxConfig.pathConfig[dynamicpath].replace('*', item)
+      if (influxConfig.valueConfig[dynamicpath])
+        influxConfig.valueConfig[path] = influxConfig.valueConfig[dynamicpath].replace('*', item)
+      log(`'${item}' for path '${dynamicpath}' identified and subscribed!`)
+    } else if (dynamicpath!==path) {
+      influxConfig.pathConfig[path] = path
+      let item = path.replace(dynamicpath.split('*')[0], '').replace(dynamicpath.split('*')[1], '')
+      log(`'${item}' for path '${dynamicpath}' identified!`)
+    } else {
+      influxConfig.pathConfig[path] = path
+    }
+  }
+
+  // timer started for the current start only - cleared on stop
+  function later(started, callback, delay) {
+    const timer = setTimeout(() => {
+      startTimers = startTimers.filter(t => t!==timer)
+      if (running && started===generation)
+        callback()
+    }, delay)
+    startTimers.push(timer)
+  }
+
+  // offline cache on the plugin state - from half of a limit (or once data was dropped) as error
+  function reportCache() {
+    const state = cache.usage(influxConfig.cacheDir)
+    const message = state.files===0 ? 'Started' :
+      (state.warning ? `Influx writes failing - offline cache ${state.message}` : `Started - offline cache ${state.message}`)
+    if (message===reported)
+      return
+    reported = message
+    if (state.warning)
+      app.setPluginError(message)
+    else
+      app.setPluginStatus(message)
+  }
+
+  // last known sunrise / sunset - the server value may be missing for a while (source restarted, timeout)
+  function sunTimes() {
+    const sunrise = sunTime(app.getSelfPath(SUNRISE)) || valueCache[SUNRISE]
+    const sunset = sunTime(app.getSelfPath(SUNSET)) || valueCache[SUNSET]
+    if (sunrise) valueCache[SUNRISE] = sunrise
+    if (sunset) valueCache[SUNSET] = sunset
+    return { sunrise, sunset }
+  }
+
+  // sunrise / sunset to influx - on change, otherwise hourly
+  function uploadSun(key, time) {
+    if (!time)
+      return
+    const now = DateTime.utc()
+    const path = influxConfig.pathConfig[key] ? influxConfig.pathConfig[key] : key
+    if (uploaded[key]===time.value && !updateVal(path, now.toMillis(), SUN_UPLOAD))
+      return
+    const values = !influxConfig.valueConfig[key] ? time.value :
+      convert.toTarget(influxConfig.valueConfig[key].split('|>')[0], time.value, influxConfig.valueConfig[key].split('|>')[1]).value
+    const metric = influx.format(path, values, now, source(time))
+    if (metric!==null) {
+      metrics.push(metric)
+      uploaded[key] = time.value
+      updates[path] = now.toMillis()
+    }
+  }
+
+  // navigation state → board, sunrise / sunset → brightness; independent of influx
+  function screenTick() {
+    const state = app.getSelfPath(NAVSTATE) || { value: 'default' }
+    if (state && currentState && currentState !== state.value && state.value!==null) {
+      const current = currentState
+      grafana.next(state.value, () => {
+        log(`Switched board from ${current} to ${state.value}`)
+      })
+      currentState = state.value
+    }
+    if (!screenConfig.enabled)
+      return
+    const { sunrise, sunset } = sunTimes()
+    // sunrise / sunset of the local day - unknown times keep the current brightness
+    const value = screen.brightness(DateTime.now(), sunrise && sunrise.value, sunset && sunset.value, screenConfig)
+    if (value===undefined) {
+      log('Screen brightness unchanged - no sunrise / sunset available')
+      return
+    }
+    if (value!==screenConfig.brightness) {
+      grafana.set('brightness', value, (val) => {
+        log(`Screen brightness set to ${val}`)
+        screenConfig.brightness = val
+      })
+      backlightChecked = Date.now()
+    } else if (Date.now() - backlightChecked >= BACKLIGHT_CHECK) {
+      // something else (display wake, kiosk restart) may have reset the backlight
+      backlightChecked = Date.now()
+      grafana.get('brightness', (actual) => {
+        if (actual!==undefined && actual!==screenConfig.brightness) {
+          log(`Backlight changed to ${actual} by something else - restoring ${screenConfig.brightness}`)
+          grafana.set('brightness', screenConfig.brightness, () => {}, true)
+        }
+      })
+    }
+  }
+
+  function startScreen(started) {
+    if (kiosk) {
+      grafana.check("launching grafana dashboard...", (status) => {
+        grafana.launch(status, (pid) => {
+          if (!running || started!==generation)
+            return
+          currentState = 'default'
+          log(`Grafana dashboard launched with status: ${pid}`)
+        })
+      })
+    }
+    if (kiosk || screenConfig.enabled) {
+      screenTimer = setInterval(screenTick, influxConfig.frequency*1000)
+      log(`Screen control started, interval: ${influxConfig.frequency}s`)
+    }
+  }
+
+  function uploadTick(influxDB) {
+    if (metrics.length !== 0) {
+      log(`Sending ${metrics.length} data points to be uploaded to influx`)
+      influx.post(influxDB, metrics, influxConfig)
+      influx.buffer(metrics)
+      metrics = []
+    }
+    reportCache()
+    const { sunrise, sunset } = sunTimes()
+    uploadSun(SUNRISE, sunrise)
+    uploadSun(SUNSET, sunset)
+  }
+
+  function onDelta(delta) {
+    if (!Array.isArray(delta.updates))
+      return;
+    delta.updates.forEach(u => {
+      // ignore undefined or null value and empty objects
+      if (!Array.isArray(u.values) || u.values.length===0 || !u.values[0].path ||
+          u.values[0].value===null || u.values[0].value===undefined ||
+          (typeof u.values[0].value==="object" && Object.keys(u.values[0].value).length===0)) {
+        return;
+      }
+      // copy new paths configs
+      if (!influxConfig.pathConfig[u.values[0].path])
+      {
+        let dynpath = influx.match(influxConfig.paths.map(p => p.path), u.values[0].path)
+        addnewpath(u.values[0].path, dynpath)
+      }
+      // read delta
+      const path = influxConfig.pathConfig[u.values[0].path] ? influxConfig.pathConfig[u.values[0].path] : u.values[0].path
+      const values = !influxConfig.valueConfig[u.values[0].path] ? u.values[0].value :
+          convert.toTarget(influxConfig.valueConfig[u.values[0].path].split('|>')[0], u.values[0].value, influxConfig.valueConfig[u.values[0].path].split('|>')[1]).value
+      let timestamp = DateTime.fromISO(u.timestamp).toUTC()
+      // decide on descriptions to be updated
+      if (descriptions.length>0 && updateVal("descriptions", timestamp.toMillis(),
+          influxConfig.retention*3600*1000-2*influxConfig.frequency*1000))
+      {
+        descriptions.forEach(d => metrics.push(d))
+        updates["descriptions"] = DateTime.utc().toMillis()
+      }
+      // decide on metrics to be recorded
+      if (values!==null && updateVal(path, timestamp.toMillis(), 1000) && influxConfig.pathConfig[path]!=='ignore')
+      {
+        updates[path] = timestamp.toMillis()
+        if (influxConfig.valueConfig[u.values[0].path] && influxConfig.valueConfig[u.values[0].path].split('|>')[1]==='latLng') {
+          const metric = influx.format(path, JSON.stringify(values), timestamp, source(u))
+          const latitude = influx.format(path+'.lat', values[0], timestamp, source(u))
+          const longitude = influx.format(path+'.lon', values[1], timestamp, source(u))
+          if (metric!==null && latitude!==null && longitude!==null) {
+            metrics.push(metric)
+            metrics.push(latitude)
+            metrics.push(longitude)
+          }
+        } else {
+          const metric = influx.format(path, values, timestamp, source(u))
+          if (metric!==null)
+            metrics.push(metric)
+        }
+      }
+    })
+  }
+
+  function startUpload(influxDB, result, started, settings) {
+    if (!running || started!==generation) {
+      log('Plugin stopped before influx health check completed - not subscribing')
+      return false
+    }
+    if (!result || result.status !== 'pass') {
+      const screenOnly = kiosk || screenConfig.enabled
+      app.setPluginError(`Failed to connect to Influx${result && result.message ? ` (${result.message})` : ''}` +
+        (screenOnly ? ' - dashboards and screen control only' : ''))
+      return false
+    }
+    log({
+      organization: settings.influx.org,
+      buckets: {
+        signalk: settings.influx.signalk,
+        telegraf: settings.influx.telegraf
+      }
+    })
+    app.setPluginStatus('Initialized');
+    log('Plugin initialized - sending metrics');
+
+    config.forEach(c => {
+      let value = !c.hasOwnProperty("key") || !app.getSelfPath(c.path) ? app.getSelfPath(c.path) : app.getSelfPath(c.path)[c.key]
+      if (value===undefined || value===null) {
+        log(`No value for ${c.path} found, skipping config metric`)
+        return
+      }
+      const metric = influx.format(c.metric, value, DateTime.utc(), '')
+      if (metric!==null)
+        metrics.push(metric)
+    })
+
+    later(started, () => {
+      // first upload: host, bucket, vessel and measurement descriptions - republished within the retention
+      log(`Uploading ${metrics.length} data points to Influx`)
+      if (metrics.length !== 0) {
+        influx.post(influxDB, metrics, influxConfig)
+        metrics.forEach(m => descriptions.push(m))
+      }
+      updates["descriptions"] = DateTime.utc().toMillis()
+      metrics = []
+
+      uploadTimer = setInterval(() => uploadTick(influxDB), influxConfig.frequency*1000)
+      log(`Interval started, upload frequency: ${influxConfig.frequency}s`)
+
+      // Get data only for self context
+      app.subscriptionmanager.subscribe (
+        {
+          context: 'vessels.self',
+          subscribe: influxConfig.paths
+        },
+        unsubscribes,
+        subscriptionError => {
+            app.error('Error:' + subscriptionError);
+        },
+        onDelta
+      );
+      app.setPluginStatus('Started');
+      reported = 'Started'
+      log('Plugin started');
+    }, START_DELAY)
+    return true
+  }
+
   const plugin = {
     id: 'signalk-dashboard',
     name: 'SignalK to Grafana Dashboard',
     start: (settings, restartPlugin) => {
-      // startup -> update InfluxDB
-      debug("Plugin starting");
+      log("Plugin starting");
       app.setPluginStatus("starting");
+      running = true
+      const started = ++generation
+      metrics = []
+      descriptions = []
+      valueCache = {}
+      updates = {}
+      uploaded = {}
+      currentState = undefined
+      reported = ''
+      backlightChecked = 0
       // init Host & Bucket Metrics from settings
       hosts.forEach(h => {
         const metric = influx.format(h.metric, settings.hosts[h.path], DateTime.utc(), '')
@@ -106,7 +377,8 @@ module.exports = (app) => {
         if (metric!==null)
           metrics.push(metric)
       })
-      settings.descriptions.forEach(d => {
+      const measurements = settings.descriptions || []
+      measurements.forEach(d => {
         let path = `label.${d.label}.description.${d.measurement}`
         let metric = influx.format(`${path}`, d.field, DateTime.utc(), '')
         if (metric!==null)
@@ -128,210 +400,30 @@ module.exports = (app) => {
         organization: settings.influx.org,
         bucket: settings.influx.signalk,
         cacheDir: app.getDataDirPath(),
-        frequency: settings.upload.frequency,
+        frequency: settings.upload.frequency || 30,
         retention: settings.influx.retention
       }
       // init Screen configuration
+      const screenSettings = (settings.grafana && settings.grafana.screen) || {}
       screenConfig = {
-        brightness: settings.grafana && settings.grafana.screen && settings.grafana.screen.brightness ? 0 : undefined,
-        daytime: settings.grafana && settings.grafana.screen && settings.grafana.screen.daytime || 225,
-        nighttime: settings.grafana && settings.grafana.screen && settings.grafana.screen.nighttime || 15,
+        enabled: !!screenSettings.brightness,
+        brightness: undefined,
+        daytime: screenSettings.daytime || 225,
+        nighttime: screenSettings.nighttime || 15,
       }
-      const influxDB = influx.login({
-        url: settings.influx.uri,         // get from options
-        token: settings.influx.token,     // get from options
-        timeout: 10 * 1000,               // 10sec timeout for health check
-      }, influxConfig.cacheDir)
-      initialized = influx.health(influxDB, (influxDB, result) => {
-        if (initialized && result.status === 'pass' ) {
-          app.debug({
-            // influx: settings.influx.uri,
-            organization: settings.influx.org,
-            buckets: {
-              signalk: settings.influx.signalk,
-              telegraf: settings.influx.telegraf
-            }
-          })
-          app.setPluginStatus('Initialized');
-          app.debug('Plugin initialized - sending metrics');
-
-          config.forEach(c => {            
-            let value = !c.hasOwnProperty("key") || !app.getSelfPath(c.path) ? app.getSelfPath(c.path) : app.getSelfPath(c.path)[c.key]
-            if (value===undefined || value===null) {
-              app.debug(`No value for ${c.path} found, skipping config metric`)
-              return
-            }
-            const metric = influx.format(c.metric, value, DateTime.utc(), '')
-            if (metric!==null)
-              metrics.push(metric)
-          })
-      
-          timer = setInterval( () => {
-              app.debug(`Uploading ${metrics.length} data points to Influx`)
-              if (metrics.length !== 0) {
-                  influx.post(influxDB, metrics, influxConfig)
-                  metrics.forEach(m => descriptions.push(m))
-                }
-              updates["descriptions"] = DateTime.utc().toMillis()
-              metrics = []
-              clearInterval(timer); 
-
-              // Restart time for uploading to influx
-              timer = setInterval(() => {
-                app.debug(`Sending ${metrics.length} data points to be uploaded to influx`)
-                // write to influx
-                if (metrics.length !== 0) {
-                    influx.post(influxDB, metrics, influxConfig)
-                    influx.buffer(metrics)
-                    metrics = []
-                }
-                // trigger board switch
-                let state = app.getSelfPath(NAVSTATE) || { value: 'default' }
-                if (state && currentState && currentState !== state.value && state.value!==null) {
-                  let current = currentState
-
-                  grafana.next(state.value, () => {
-                      app.debug(`Switched board from ${current} to ${state.value}`)                      
-                    })
-                    currentState = state.value
-                }
-                // last known times as fallback (the paths may be renamed for influx - cached under their SignalK path)
-                let sunrise = known(app.getSelfPath(SUNRISE)) || valueCache[SUNRISE]
-                let sunset = known(app.getSelfPath(SUNSET)) || valueCache[SUNSET]
-                if (sunrise) valueCache[SUNRISE] = sunrise
-                if (sunset) valueCache[SUNSET] = sunset
-                // push sunrise & sunset to metrics
-                if (sunrise && sunrise.value) {
-                  const path = influxConfig.pathConfig[SUNRISE] ? influxConfig.pathConfig[SUNRISE] : SUNRISE
-                  const values = !influxConfig.valueConfig[SUNRISE] ? sunrise.value : 
-                    convert.toTarget(influxConfig.valueConfig[SUNRISE].split('|>')[0], sunrise.value, influxConfig.valueConfig[SUNRISE].split('|>')[1]).value
-                  const metric = influx.format(path, values, DateTime.utc(), source(sunrise))
-                  if (metric!==null && updateVal(path, metric.timestamp, 1000)) {
-                    metrics.push(metric)
-                    updates[path] = metric.timestamp
-                  }
-                }
-                if (sunset && sunset.value) {
-                  const path = influxConfig.pathConfig[SUNSET] ? influxConfig.pathConfig[SUNSET] : SUNSET
-                  const values = !influxConfig.valueConfig[SUNSET] ? sunset.value : 
-                    convert.toTarget(influxConfig.valueConfig[SUNSET].split('|>')[0], sunset.value, influxConfig.valueConfig[SUNSET].split('|>')[1]).value
-                  const metric = influx.format(path, values, DateTime.utc(), source(sunset))
-                  if (metric!==null && updateVal(path, metric.timestamp, 1000))
-                  {
-                    metrics.push(metric)
-                    updates[path] = metric.timestamp
-                  }
-                }
-                // change screen configuration
-                if (screenConfig.hasOwnProperty('brightness') && screenConfig.brightness>=0 && screenConfig.brightness<=255) {
-                  // sunrise / sunset of the local day - unknown times keep the current brightness
-                  const value = screen.brightness(DateTime.now(), sunrise && sunrise.value, sunset && sunset.value, screenConfig)
-                  if (value===undefined)
-                    debug('Screen brightness unchanged - no sunrise / sunset available')
-                  else if (value!==screenConfig.brightness) {
-                    grafana.set('brightness', value, (val) => {
-                      app.debug(`Screen brightness set to ${val}`)
-                      screenConfig.brightness = val || 0
-                    })
-                  }
-                }
-              }, influxConfig.frequency*1000)
-              app.debug(`Interval started, upload frequency: ${influxConfig.frequency}s`)
-              
-              // Get data only for self context
-              app.subscriptionmanager.subscribe (
-                {
-                  context: 'vessels.self', 
-                  subscribe: influxConfig.paths
-                },
-                unsubscribes,
-                subscriptionError => {
-                    app.error('Error:' + subscriptionError);
-                },
-                delta => {
-                    if (!delta.updates) 
-                      return;
-                    delta.updates.forEach(u => {
-                        // ignore undefined or null value
-                        if (!u.values || !u.values[0].path || u.values[0].value===null || 
-                            (typeof u.values[0].value==="object" && Object.keys(u.values[0].value)===0)) {
-                            return;
-                        }
-                        // copy new paths configs
-                        if (!influxConfig.pathConfig[u.values[0].path])
-                        {
-                          let dynpath = influx.match(influxConfig.paths.map(p => p.path), u.values[0].path)
-                          addnewpath(u.values[0].path, dynpath, app.debug)
-                        }
-                        // read delta
-                        const path = influxConfig.pathConfig[u.values[0].path] ? influxConfig.pathConfig[u.values[0].path] : u.values[0].path
-                        const values = !influxConfig.valueConfig[u.values[0].path] ? u.values[0].value : 
-                            convert.toTarget(influxConfig.valueConfig[u.values[0].path].split('|>')[0], u.values[0].value, influxConfig.valueConfig[u.values[0].path].split('|>')[1]).value
-                        let timestamp = DateTime.fromISO(u.timestamp).toUTC()
-                        // decide on descriptions to be updated
-                        if (initialized && descriptions.length>0 && updateVal("descriptions", timestamp.toMillis(), 
-                            influxConfig.retention*3600*1000-2*influxConfig.frequency*1000))
-                            {
-                              descriptions.forEach(d => metrics.push(d))
-                              updates["descriptions"] = DateTime.utc().toMillis()                      
-                            }
-                        // decide on metrics to be recorded
-                        if (initialized && values!==null && updateVal(path, timestamp.toMillis(), 1000) && influxConfig.pathConfig[path]!=='ignore')
-                        {
-                            updates[path] = timestamp.toMillis()
-                            if (influxConfig.valueConfig[u.values[0].path] && influxConfig.valueConfig[u.values[0].path].split('|>')[1]==='latLng') {
-                              const metric = influx.format(path, JSON.stringify(values), timestamp, source(u))
-                              const latitude = influx.format(path+'.lat', values[0], timestamp, source(u))
-                              const longitude = influx.format(path+'.lon', values[1], timestamp, source(u))
-                            if (metric!==null && latitude!==null && longitude!==null) {
-                                metrics.push(metric)
-                                metrics.push(latitude)
-                                metrics.push(longitude)
-                              }
-                            } else {
-                              const metric = influx.format(path, values, timestamp, source(u))
-                              if (metric!==null)
-                                metrics.push(metric)
-                            }
-                        }
-                    })
-                }
-              );
-              // launch grafana dashboard
-              if (kiosk) {
-                grafana.check("launching grafana dashboard...", (status) => {
-                  grafana.launch(status, (pid) => {
-                    currentState = 'default'
-                    app.debug(`Grafana dashboard launched with status: ${pid}`)
-                  })
-                })
-              }
-              // set plugin status to started               
-              app.setPluginStatus('Started');
-              app.debug('Plugin started');
-            }, 5000, debug);        
-
-          return true
-        }
-        else
-        {
-          app.setPluginError('Failed to connect to Influx');
-          return false
-        }
-      })
-      kiosk = grafana.init(settings.grafana, debug, app.setPluginStatus, app.setPluginError) && settings.grafana.autostart
-      // init path configuration          
+      // init path configuration
       influxConfig.pathConfig = {}
       influxConfig.valueConfig = {}
-      if (!settings.upload.pathConfig || !influx.check(app.getDataDirPath(), settings.upload.pathConfig)) 
-      {   
+      if (!settings.upload.pathConfig || !influx.check(app.getDataDirPath(), settings.upload.pathConfig))
+      {
         settings.upload.pathConfig = 'pathconfig.json'
-        configFile = influx.save(app.getDataDirPath(), settings.upload.pathConfig, [])
-        app.savePluginOptions(settings, () => {app.debug('Plugin options saved')});
+        influx.save(app.getDataDirPath(), settings.upload.pathConfig, [])
+        app.savePluginOptions(settings, () => {log('Plugin options saved')});
       }
+      // re-read on every start - a restart from the server UI picks up changes of the file
       influxConfig.paths = influx.config(
-        settings.upload.pathConfig.includes('/') ? settings.upload.pathConfig : 
-        path.join(app.getDataDirPath(), settings.upload.pathConfig), 
+        settings.upload.pathConfig.includes('/') ? settings.upload.pathConfig :
+        path.join(app.getDataDirPath(), settings.upload.pathConfig),
         settings.upload.frequency)
       influxConfig.paths.forEach(p => {
         if (p.hasOwnProperty('config'))
@@ -339,16 +431,30 @@ module.exports = (app) => {
         if (p.hasOwnProperty('convert'))
             influxConfig.valueConfig[p.path] = p.convert
       })
+      // kiosk and brightness do not depend on influx
+      kiosk = grafana.init(settings.grafana, log, app.setPluginStatus, app.setPluginError) && !!(settings.grafana && settings.grafana.autostart)
+      later(started, () => startScreen(started), START_DELAY)
+
+      const influxDB = influx.login({
+        url: settings.influx.uri,         // get from options
+        token: settings.influx.token,     // get from options
+        timeout: 10 * 1000,               // 10sec timeout for health check
+      }, influxConfig.cacheDir)
+      influx.health(influxDB, (db, result) => startUpload(db, result, started, settings))
     },
     stop: () => {
+      running = false
       unsubscribes.forEach(f => f());
       unsubscribes = [];
+      startTimers.forEach(t => clearTimeout(t))
+      startTimers = []
+      uploadTimer && clearInterval(uploadTimer);
+      screenTimer && clearInterval(screenTimer);
+      uploadTimer = undefined
+      screenTimer = undefined
       // persist any metrics still buffered, also when influx was never configured
       metrics = influx.flush(metrics, influxConfig.cacheDir ? influxConfig.cacheDir : app.getDataDirPath());
-      // shutdown
-      debug("stopping");
-      timer && clearInterval(timer);
-      debug("stopped");
+      log("stopped");
     },
     schema: {
       type: 'object',
@@ -596,7 +702,5 @@ module.exports = (app) => {
     }
   };
 
-  const debug = require("debug")(plugin.id);
-  
   return plugin;
 };
