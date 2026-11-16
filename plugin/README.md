@@ -258,10 +258,13 @@ Environmentals (if not covered by signalk-barograph):
 
 ![motoring](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/sample-motoring.png)
 
+## Screen brightness
+
+With *Adapt screen brightness* switched on, the plugin sets the display backlight (`/sys/class/backlight/*/brightness` on the kiosk host, 0-255) to the *Daytime brightness* between sunrise and sunset and to the *Nighttime brightness* otherwise. Sunrise and sunset are read from `environment.sunlight.times.sunrise` / `sunset` (eg. published by the OpenWeather or Open-Meteo plugin) and taken as times of the local day in the time zone of the SignalK host - whichever day a source published them for. Without sunrise / sunset the brightness is left unchanged.
+
 ## Release Notes
-- v0.2 Alpha Test
-- v0.3 Beta Test
-- v0.4 Brightness changing aligned to sunrise & sunset 
+
+See the __[CHANGELOG](https://github.com/inspired-technologies/signalk-dashboard/blob/main/CHANGELOG.md)__.
 
 ## Notes & References
 
