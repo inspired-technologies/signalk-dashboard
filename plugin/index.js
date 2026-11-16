@@ -18,6 +18,7 @@ const path = require('path')
 const influx = require('./influx');
 const convert = require("./skunits")
 const grafana = require('./grafana');
+const screen = require('./screen');
 const NAVSTATE = 'navigation.state'
 const SUNRISE = 'environment.sunlight.times.sunrise'
 const SUNSET = 'environment.sunlight.times.sunset'
@@ -51,6 +52,11 @@ let timer
 
 function updateVal(path, time, interval) {
   return updates[path] && updates[path]!==null ? (time-updates[path])>interval : true;
+}
+
+// value object with a valid time, eg. { value: '2026-11-16T06:20:00.000Z', $source: ... }
+function known(time) {
+  return time && typeof time.value === 'string' && DateTime.fromISO(time.value).isValid ? time : undefined
 }
 
 function source(update) {
@@ -189,8 +195,11 @@ module.exports = (app) => {
                     })
                     currentState = state.value
                 }
-                let sunrise = app.getSelfPath(SUNRISE) || valueCache[SUNRISE]
-                let sunset = app.getSelfPath(SUNSET) || valueCache[SUNSET]
+                // last known times as fallback (the paths may be renamed for influx - cached under their SignalK path)
+                let sunrise = known(app.getSelfPath(SUNRISE)) || valueCache[SUNRISE]
+                let sunset = known(app.getSelfPath(SUNSET)) || valueCache[SUNSET]
+                if (sunrise) valueCache[SUNRISE] = sunrise
+                if (sunset) valueCache[SUNSET] = sunset
                 // push sunrise & sunset to metrics
                 if (sunrise && sunrise.value) {
                   const path = influxConfig.pathConfig[SUNRISE] ? influxConfig.pathConfig[SUNRISE] : SUNRISE
@@ -199,7 +208,6 @@ module.exports = (app) => {
                   const metric = influx.format(path, values, DateTime.utc(), source(sunrise))
                   if (metric!==null && updateVal(path, metric.timestamp, 1000)) {
                     metrics.push(metric)
-                    valueCache[path] = sunrise
                     updates[path] = metric.timestamp
                   }
                 }
@@ -211,21 +219,16 @@ module.exports = (app) => {
                   if (metric!==null && updateVal(path, metric.timestamp, 1000))
                   {
                     metrics.push(metric)
-                    valueCache[path] = sunset
                     updates[path] = metric.timestamp
                   }
                 }
                 // change screen configuration
                 if (screenConfig.hasOwnProperty('brightness') && screenConfig.brightness>=0 && screenConfig.brightness<=255) {
-                  const now = DateTime.utc().toMillis()
-                  const value = !sunrise && !sunset ? screenConfig.daytime : 
-                    sunset && now > DateTime.fromISO(sunset.value).toMillis() ? 
-                      screenConfig.nighttime : 
-                    sunset && sunrise && now < DateTime.fromISO(sunrise.value).toMillis() ? 
-                      screenConfig.nighttime : 
-                    sunrise && now > DateTime.fromISO(sunrise.value).toMillis() ? 
-                      screenConfig.daytime : 128
-                  if (value!==screenConfig.brightness) {
+                  // sunrise / sunset of the local day - unknown times keep the current brightness
+                  const value = screen.brightness(DateTime.now(), sunrise && sunrise.value, sunset && sunset.value, screenConfig)
+                  if (value===undefined)
+                    debug('Screen brightness unchanged - no sunrise / sunset available')
+                  else if (value!==screenConfig.brightness) {
                     grafana.set('brightness', value, (val) => {
                       app.debug(`Screen brightness set to ${val}`)
                       screenConfig.brightness = val || 0
