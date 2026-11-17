@@ -561,14 +561,19 @@ module.exports = (app) => {
                   },                  
                   remote: {
                     type: 'string',
-                    title: 'Remote command',
-                    description: 'ssh login of the kiosk host, eg. ssh pi@kiosk (-p port, -i key file) - empty: local',
+                    title: 'Remote host',
+                    description: 'ssh login of the kiosk host as user@host - empty: kiosk on the SignalK host',
                     default: ''
+                  },
+                  port: {
+                    type: 'number',
+                    title: 'SSH port',
+                    description: 'ssh port of the remote host - empty: 22'
                   },
                   keyFile: {
                     type: 'string',
                     title: 'SSH key file',
-                    description: 'private key of the remote login - empty: ~/.ssh/id_ed25519, id_ecdsa or id_rsa of the SignalK user',
+                    description: 'private key of the remote login, required for a remote host - keys with passphrase are not supported',
                     default: ''
                   },
                   params: {

@@ -40,9 +40,10 @@ function init (config, logger, set, error) {
     boards = { default: {} }
     current.board = undefined
     try {
-        remote.configure(config && config.launch && config.launch.remote, config && config.launch && config.launch.keyFile)
+        const launch = (config && config.launch) || {}
+        remote.configure(launch.remote, launch.port, launch.keyFile)
     } catch (e) {
-        failed(`invalid remote command - ${e.message}`)
+        failed(`remote host - ${e.message}`)
         return false
     }
     if (config && config.launch)

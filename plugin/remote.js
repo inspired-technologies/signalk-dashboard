@@ -6,12 +6,11 @@ const path = require('path')
 const ssh2 = require('ssh2')
 const log = require('debug')('signalk-dashboard:remote')
 
-const DEFAULT_KEYS = ['id_ed25519', 'id_ecdsa', 'id_rsa']   // tried in this order, like the ssh client
-const WITH_VALUE = 'bcDEeFIiJLlmOopQRSWw'                   // ssh options taking a value
 const READY_TIMEOUT = 10000
 const KEEPALIVE = 30000
 
 let login = null        // { host, port, username, keyFile } - null: local execution
+let invalid = null      // configuration error - no command runs, neither remote nor locally
 let conn = null         // ssh2 client, connecting or ready
 let ready = false
 let pending = []        // callbacks waiting for the connection
@@ -19,55 +18,75 @@ let hostKey             // sha256 of the host key, logged when it changes
 
 const home = (file) => file && file.startsWith('~') ? path.join(os.homedir(), file.slice(1)) : file
 
-// "ssh [-p port] [-i key file] [-l user] [user@]host", "[user@]host" or "ssh://[user@]host[:port]" - empty: local
-function parse (remote, keyFile) {
+// remote host "user@host" with port and key file from the configuration - empty: local.
+// The former remote command "ssh [-p port] [-i key file] user@host" is still accepted; nothing is assumed:
+// user and key file are required, other ssh options are rejected.
+function parse (remote, port, keyFile) {
     if (!remote || !String(remote).trim())
         return null
     const tokens = String(remote).trim().split(/\s+/)
-    const result = { host: '', port: 22, username: '', keyFile: home(keyFile || '') }
+    let legacyPort
+    let legacyKey
     let destination
     for (let i = tokens[0]==='ssh' ? 1 : 0; i < tokens.length; i++) {
         const t = tokens[i]
-        if (t.startsWith('-') && t.length>1) {
-            const option = t[1]
-            if (!WITH_VALUE.includes(option))
-                continue                                    // flags like -t, -4
-            const value = t.length>2 ? t.slice(2) : tokens[++i]
-            if (option==='p') result.port = parseInt(value, 10) || 22
-            else if (option==='i' && !keyFile) result.keyFile = home(value)
-            else if (option==='l') result.username = value
-        } else if (!destination)
-            destination = t                                 // anything after the destination is a command
+        if (t==='-p' || t==='-i') {
+            if (i+1 >= tokens.length)
+                throw new Error(`missing value of ${t} in the remote host '${remote}'`)
+            if (t==='-p') legacyPort = tokens[++i]
+            else legacyKey = tokens[++i]
+        } else if (t.startsWith('-'))
+            throw new Error(`ssh option ${t} not supported - enter the remote host as user@host, port and key file in their own options`)
+        else if (!destination)
+            destination = t
         else
-            break
+            throw new Error(`unexpected '${t}' after the remote host '${destination}'`)
     }
-    if (!destination)
-        throw new Error(`no host in remote command '${remote}'`)
-    let uri = false
-    if (destination.startsWith('ssh://')) {
-        destination = destination.slice(6)
-        uri = true
+    const at = destination ? destination.lastIndexOf('@') : -1
+    if (at<=0 || at===destination.length-1)
+        throw new Error(`remote host '${remote}' is not user@host`)
+    const result = {
+        host: destination.slice(at+1),
+        port: port!==undefined && port!==null && port!=='' ? Number(port) : (legacyPort!==undefined ? Number(legacyPort) : 22),
+        username: destination.slice(0, at),
+        keyFile: home(keyFile || legacyKey || '')
     }
-    const at = destination.lastIndexOf('@')
-    if (at>=0) {
-        result.username = destination.slice(0, at)
-        destination = destination.slice(at+1)
-    }
-    if (uri && /^[^:]+:\d+$/.test(destination)) {
-        result.port = parseInt(destination.split(':')[1], 10)
-        destination = destination.split(':')[0]
-    }
-    result.host = destination
-    if (!result.username)
-        result.username = os.userInfo().username            // like ssh: the user running SignalK
+    if (!Number.isInteger(result.port) || result.port<1 || result.port>65535)
+        throw new Error(`invalid ssh port ${port!==undefined && port!=='' ? port : legacyPort}`)
+    if (!result.keyFile)
+        throw new Error(`SSH key file required for the remote host ${result.username}@${result.host}`)
     return result
 }
 
-// configure the kiosk host - closes a connection to a previous host
-function configure (remote, keyFile) {
+// key of the configured key file - keys with passphrase are not supported
+function privateKey (keyFile) {
+    let key
+    try {
+        key = fs.readFileSync(keyFile)
+    } catch (e) {
+        throw new Error(`SSH key file ${keyFile} not readable: ${e.message}`)
+    }
+    const parsed = ssh2.utils.parseKey(key)
+    if (parsed instanceof Error)
+        throw new Error(`SSH key file ${keyFile} not usable${/passphrase/i.test(parsed.message) ? ' - keys with passphrase are not supported' : ''}: ${parsed.message}`)
+    return key
+}
+
+// configure the kiosk host - closes a connection to a previous host; throws on an invalid configuration
+function configure (remote, port, keyFile) {
     end()
-    login = parse(remote, keyFile)
+    login = null
+    invalid = null
     hostKey = undefined
+    try {
+        login = parse(remote, port, keyFile)
+        if (login)
+            privateKey(login.keyFile)
+    } catch (e) {
+        login = null
+        invalid = e
+        throw e
+    }
     return login
 }
 
@@ -77,18 +96,6 @@ function isRemote () {
 
 function describe () {
     return login ? `${login.username}@${login.host}:${login.port}` : 'local'
-}
-
-// configured key file, otherwise the default keys of the SignalK user
-function privateKey () {
-    if (login.keyFile)
-        return fs.readFileSync(login.keyFile)
-    for (const name of DEFAULT_KEYS) {
-        const file = path.join(os.homedir(), '.ssh', name)
-        if (fs.existsSync(file))
-            return fs.readFileSync(file)
-    }
-    return undefined
 }
 
 function reset (client) {
@@ -114,18 +121,10 @@ function connection (callback) {
         return                                              // connecting
     let key
     try {
-        key = privateKey()
+        key = privateKey(login.keyFile)                     // re-read: the key may have been replaced
     } catch (e) {
-        return flush(new Error(`ssh key file not readable: ${e.message}`))
+        return flush(e)
     }
-    const agent = process.env.SSH_AUTH_SOCK
-    if (key && ssh2.utils.parseKey(key) instanceof Error) {
-        // passphrase protected keys only through the ssh agent
-        log(`SSH key for ${describe()} not usable: ${ssh2.utils.parseKey(key).message}`)
-        key = undefined
-    }
-    if (!key && !agent)
-        return flush(new Error(`no usable ssh key for ${describe()} - set the key file (without passphrase) or place a key in ~/.ssh of the SignalK user`))
     const client = new ssh2.Client()
     conn = client
     client.on('ready', () => {
@@ -144,24 +143,22 @@ function connection (callback) {
             flush(new Error(`ssh connection to ${describe()} closed`))
         }
     })
-    const options = {
-        host: login.host,
-        port: login.port,
-        username: login.username,
-        readyTimeout: READY_TIMEOUT,
-        keepaliveInterval: KEEPALIVE,
-        hostHash: 'sha256',
-        hostVerifier: (hash) => {
-            if (hash!==hostKey)
-                log(`Host key of ${login.host} (sha256): ${hash}`)
-            hostKey = hash
-            return true
-        }
-    }
-    if (key) options.privateKey = key
-    if (agent) options.agent = agent
     try {
-        client.connect(options)
+        client.connect({
+            host: login.host,
+            port: login.port,
+            username: login.username,
+            privateKey: key,
+            readyTimeout: READY_TIMEOUT,
+            keepaliveInterval: KEEPALIVE,
+            hostHash: 'sha256',
+            hostVerifier: (hash) => {
+                if (hash!==hostKey)
+                    log(`Host key of ${login.host} (sha256): ${hash}`)
+                hostKey = hash
+                return true
+            }
+        })
     } catch (e) {
         if (reset(client))
             flush(e)
@@ -170,6 +167,8 @@ function connection (callback) {
 
 // run a shell command - callback(error, stdout, stderr) like child_process.exec, error.code = exit code
 function run (cmd, callback) {
+    if (invalid)
+        return callback(invalid, '', '')
     if (!login)
         return child.exec(cmd, callback)
     connection((error, client) => {
@@ -211,6 +210,8 @@ function sftp (callback) {
 
 // read a text file - callback(error, data)
 function readFile (file, callback) {
+    if (invalid)
+        return callback(invalid)
     if (!login)
         return fs.readFile(file, 'utf8', callback)
     sftp((error, session) => {
@@ -225,6 +226,8 @@ function readFile (file, callback) {
 
 // write a text file - callback(error) once written
 function writeFile (file, data, callback) {
+    if (invalid)
+        return callback(invalid)
     if (!login)
         return fs.writeFile(file, data, 'utf8', callback)
     sftp((error, session) => {
@@ -248,7 +251,7 @@ function end () {
 }
 
 module.exports = {
-    parse,          // remote command → login
+    parse,          // remote host, port, key file → login
     configure,      // set the kiosk host (empty: local)
     isRemote,
     describe,
