@@ -57,22 +57,33 @@ function fakeSsh() {
 const run = (cmd) => new Promise((resolve) => remote.run(cmd, (error, stdout, stderr) => resolve({ error, stdout, stderr })));
 
 describe('remote login', () => {
-  it('parses ssh command lines and logins', () => {
-    assert.deepEqual(remote.parse('ssh pi@kiosk', ''), { host: 'kiosk', port: 22, username: 'pi', keyFile: '' });
-    assert.deepEqual(remote.parse('ssh -p 2222 -i /keys/id pi@10.0.0.5'), { host: '10.0.0.5', port: 2222, username: 'pi', keyFile: '/keys/id' });
-    assert.deepEqual(remote.parse('ssh -t -o BatchMode=yes -l admin kiosk'), { host: 'kiosk', port: 22, username: 'admin', keyFile: '' });
-    assert.deepEqual(remote.parse('ssh://pi@kiosk:2200'), { host: 'kiosk', port: 2200, username: 'pi', keyFile: '' });
-    assert.equal(remote.parse('pi@kiosk -p22', '/keys/configured').keyFile, '/keys/configured');
-    assert.equal(remote.parse('ssh -i /keys/option pi@kiosk', '/keys/configured').keyFile, '/keys/configured');
-    assert.equal(remote.parse('kiosk').username, os.userInfo().username);
+  it('takes user@host, port and key file from the configuration', () => {
+    assert.deepEqual(remote.parse('pi@kiosk', undefined, '/keys/id'), { host: 'kiosk', port: 22, username: 'pi', keyFile: '/keys/id' });
+    assert.deepEqual(remote.parse('pi@10.0.0.5', 2222, '/keys/id'), { host: '10.0.0.5', port: 2222, username: 'pi', keyFile: '/keys/id' });
     assert.equal(remote.parse(''), null);
     assert.equal(remote.parse(undefined), null);
-    assert.throws(() => remote.parse('ssh -p 22'), /no host/);
+  });
+
+  it('accepts the former remote command ssh [-p port] [-i key file] user@host', () => {
+    assert.deepEqual(remote.parse('ssh pi@kiosk', undefined, '/keys/id'), { host: 'kiosk', port: 22, username: 'pi', keyFile: '/keys/id' });
+    assert.deepEqual(remote.parse('ssh -p 2222 -i /keys/legacy pi@kiosk'), { host: 'kiosk', port: 2222, username: 'pi', keyFile: '/keys/legacy' });
+    // the options of the configuration win
+    assert.deepEqual(remote.parse('ssh -p 2222 -i /keys/legacy pi@kiosk', 2200, '/keys/id'), { host: 'kiosk', port: 2200, username: 'pi', keyFile: '/keys/id' });
+  });
+
+  it('assumes nothing - user, key file and supported options are required', () => {
+    assert.throws(() => remote.parse('kiosk', undefined, '/keys/id'), /not user@host/);
+    assert.throws(() => remote.parse('ssh pi@kiosk'), /SSH key file required/);
+    assert.throws(() => remote.parse('ssh -o BatchMode=yes pi@kiosk', undefined, '/keys/id'), /option -o not supported/);
+    assert.throws(() => remote.parse('ssh -l pi kiosk', undefined, '/keys/id'), /option -l not supported/);
+    assert.throws(() => remote.parse('ssh pi@kiosk uptime', undefined, '/keys/id'), /unexpected 'uptime'/);
+    assert.throws(() => remote.parse('ssh -p', undefined, '/keys/id'), /missing value of -p/);
+    assert.throws(() => remote.parse('pi@kiosk', 70000, '/keys/id'), /invalid ssh port/);
   });
 });
 
 describe('local execution', () => {
-  before(() => remote.configure('', ''));
+  before(() => remote.configure(''));
 
   it('runs commands with their exit code', async () => {
     const ok = await run('echo hello');
@@ -96,7 +107,6 @@ describe('remote execution over ssh2', () => {
   let keyFile;
 
   let encryptedKeyFile;
-  let agent;
 
   before(() => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'signalk-dashboard-'));
@@ -114,25 +124,22 @@ describe('remote execution over ssh2', () => {
     });
     encryptedKeyFile = path.join(dir, 'id_encrypted');
     fs.writeFileSync(encryptedKeyFile, encrypted.privateKey);
-    agent = process.env.SSH_AUTH_SOCK;
-    delete process.env.SSH_AUTH_SOCK;
   });
 
   afterEach(() => {
-    remote.configure('', '');
+    remote.configure('');
     ssh2.Client = original;
   });
 
   after(() => {
     ssh2.Client = original;
-    if (agent !== undefined) process.env.SSH_AUTH_SOCK = agent;
   });
 
   function connect(login = 'ssh pi@kiosk') {
     const fake = fakeSsh();
     host = fake.host;
     ssh2.Client = fake.FakeClient;
-    remote.configure(login, keyFile);
+    remote.configure(login, undefined, keyFile);
   }
 
   it('shares one connection, passes the exit code and output', async () => {
@@ -162,13 +169,30 @@ describe('remote execution over ssh2', () => {
     host.fail = 'All configured authentication methods failed';
     const failed = await run('true');
     assert.match(failed.error.message, /authentication/);
-    remote.configure('ssh pi@kiosk', path.join(path.dirname(keyFile), 'missing'));
-    const missing = await run('true');
-    assert.match(missing.error.message, /key file not readable/);
-    // passphrase protected keys only via the ssh agent - none in this test
-    remote.configure('ssh pi@kiosk', encryptedKeyFile);
-    const encrypted = await run('true');
-    assert.match(encrypted.error.message, /no usable ssh key/);
+  });
+
+  it('rejects missing and passphrase protected keys - and then runs nothing, not even locally', async () => {
+    assert.throws(() => remote.configure('pi@kiosk', undefined, path.join(path.dirname(keyFile), 'missing')), /not readable/);
+    const missing = await run('echo local');
+    assert.match(missing.error.message, /not readable/);
+    assert.equal(missing.stdout, '');
+    assert.throws(() => remote.configure('pi@kiosk', undefined, encryptedKeyFile), /keys with passphrase are not supported/);
+    const written = await new Promise((resolve) => remote.writeFile(path.join(path.dirname(keyFile), 'local.yaml'), 'x', resolve));
+    assert.match(written.message, /passphrase/);
+    assert.equal(fs.existsSync(path.join(path.dirname(keyFile), 'local.yaml')), false);
+  });
+
+  it('reports a key removed after the start on the next connection', async () => {
+    const replaced = path.join(path.dirname(keyFile), 'id_replaced');
+    fs.copyFileSync(keyFile, replaced);
+    const fake = fakeSsh();
+    host = fake.host;
+    ssh2.Client = fake.FakeClient;
+    remote.configure('pi@kiosk', undefined, replaced);
+    fs.unlinkSync(replaced);
+    const failed = await run('true');
+    assert.match(failed.error.message, /not readable/);
+    assert.equal(host.clients.length, 0);
   });
 
   it('closes the connection on end', async () => {
@@ -186,7 +210,7 @@ describe('remote execution over ssh2', () => {
     const statuses = [];
     const ok = grafana.init({
       autostart: true,
-      launch: { command: 'grafana-kiosk', remote: 'ssh pi@kiosk', params: '/home/pi/kiosk.yaml' },
+      launch: { command: 'grafana-kiosk', remote: 'ssh pi@kiosk', keyFile, params: '/home/pi/kiosk.yaml' },
       dashboard: { server: 'http://grafana', idle: 'idle' },
       boards: [{ state: 'sailing', uid: 'sail' }],
     }, null, (s) => statuses.push(s), (e) => statuses.push(`error ${e}`));
@@ -209,7 +233,7 @@ describe('remote execution over ssh2', () => {
     connect();
     host.results = { 'cat ': { stdout: '200\n' } };
     grafana.init({
-      launch: { command: 'chromium-browser', remote: 'ssh pi@kiosk', params: '--kiosk' },
+      launch: { command: 'chromium-browser', remote: 'pi@kiosk', port: 2222, keyFile, params: '--kiosk' },
       dashboard: { server: 'http://grafana', idle: 'idle' },
     }, null, () => {}, () => {});
     const value = await new Promise((resolve) => grafana.set('brightness', 15, resolve, true));
@@ -217,16 +241,19 @@ describe('remote execution over ssh2', () => {
     assert.equal(host.commands.at(-1), 'echo 15 | sudo tee /sys/class/backlight/*/brightness');
     assert.equal(await new Promise((resolve) => grafana.get('brightness', resolve)), 200);
     assert.equal(host.clients.length, 1);
+    assert.equal(host.options[0].port, 2222);
   });
 
-  it('grafana: invalid remote command reported, no launch', () => {
+  it('grafana: remote host without key file reported, no launch and no local brightness', async () => {
     const errors = [];
     const ok = grafana.init({
       autostart: true,
-      launch: { command: 'chromium-browser', remote: 'ssh -p 22', params: '' },
+      launch: { command: 'chromium-browser', remote: 'pi@kiosk', params: '' },
       dashboard: { server: 'http://grafana', idle: 'idle' },
     }, null, () => {}, (e) => errors.push(e));
     assert.equal(ok, false);
-    assert.match(errors[0], /invalid remote command/);
+    assert.match(errors[0], /remote host - SSH key file required/);
+    const result = await run('echo local');
+    assert.match(result.error.message, /SSH key file required/);
   });
 });
