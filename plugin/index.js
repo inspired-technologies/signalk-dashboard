@@ -452,6 +452,7 @@ module.exports = (app) => {
       screenTimer && clearInterval(screenTimer);
       uploadTimer = undefined
       screenTimer = undefined
+      grafana.stop()
       // persist any metrics still buffered, also when influx was never configured
       metrics = influx.flush(metrics, influxConfig.cacheDir ? influxConfig.cacheDir : app.getDataDirPath());
       log("stopped");
@@ -561,9 +562,15 @@ module.exports = (app) => {
                   remote: {
                     type: 'string',
                     title: 'Remote command',
-                    description: 'remote execution, pwd-free login required',
+                    description: 'ssh login of the kiosk host, eg. ssh pi@kiosk (-p port, -i key file) - empty: local',
                     default: ''
-                  }, 
+                  },
+                  keyFile: {
+                    type: 'string',
+                    title: 'SSH key file',
+                    description: 'private key of the remote login - empty: ~/.ssh/id_ed25519, id_ecdsa or id_rsa of the SignalK user',
+                    default: ''
+                  },
                   params: {
                     type: 'string',
                     title: 'Configuration params',
