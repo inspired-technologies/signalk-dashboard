@@ -213,6 +213,12 @@ Unique IDs for dashbards and their parameters can be determined from the grafana
 
 *Note: It is advisable not to configure variables as parameters as they are usually calculated from Influx during regular refreshes*
 
+4. Metadata
+
+The sample dashboards take bucket names, hosts, vessel and measurement labels from the descriptions the plugin writes to the SignalK bucket (measurement `description`): on start and then hourly - at least four times per *SignalK Bucket Retention*, so keep that option in line with the bucket. The dashboards look them up over the hidden constant `metawindow` (default `7d`), independent of the selected time range; the measurements follow the selected range. The plugin state shows when the metadata was last published (eg. `Started - metadata published 14:05`) and which vessel data (name, mmsi, callsign) is missing in SignalK.
+
+The data source is the dashboard variable `datasource` - select the InfluxDB data source after importing a sample dashboard.
+
 ![Dashboard Configuration](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/dashboard-config.png)
 
 ## Upload path configration
