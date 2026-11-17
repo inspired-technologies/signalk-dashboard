@@ -182,8 +182,13 @@ In case Grafana and SignalK services not running on the same host also remote ex
 | ![Host Configuration](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/host-config.png) | ![Remote Exec](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/remote-exec.png) |
 
 All remote actions - launching the kiosk, switching boards, the grafana-kiosk yaml and the screen brightness - use one ssh connection of the plugin (ssh2), no `ssh` client process:
-- *Remote command*: the login of the kiosk host, eg. `ssh pi@kiosk`; `-p <port>`, `-i <key file>`, `-l <user>` and `ssh://pi@kiosk:2222` are understood, other ssh options are ignored. Without a user the user running SignalK logs in.
-- *SSH key file*: the private key for the login, eg. `/home/pi/.ssh/id_ed25519` (formerly `keyFile`, edited in the JSON configuration - still used). Empty: `~/.ssh/id_ed25519`, `id_ecdsa` or `id_rsa` of the user running SignalK, like the ssh client. Keys with passphrase only via a running ssh agent (`SSH_AUTH_SOCK` of the server) - see __[public key authentication](./pubkey.md)__.
+- *Remote host*: the login of the kiosk host as `user@host`, eg. `pi@kiosk`. Empty: the kiosk runs on the SignalK host.
+- *SSH port*: empty for 22.
+- *SSH key file*: the private key for the login, eg. `/home/pi/.ssh/id_ed25519` - required for a remote host (formerly `keyFile`, edited in the JSON configuration - still used).
+
+Nothing is assumed: without user, key file or with an unreadable key the plugin reports an error and runs no screen command. A former remote command `ssh [-p <port>] [-i <key file>] user@host` keeps working; *SSH port* and *SSH key file* take precedence, other ssh options are rejected.
+
+*Note: keys with a passphrase are not supported for the remote login at this time.* The plugin runs unattended - a passphrase would have to be stored in the plugin configuration or entered into an ssh agent after every boot. Create a dedicated key without passphrase for the kiosk login (see __[public key authentication](./pubkey.md)__) and keep it readable for the user running SignalK only (`chmod 600`).
 
 Commands run on the kiosk host as written (no local shell in between); the host key fingerprint is logged with the *Debug log* of the plugin.
 

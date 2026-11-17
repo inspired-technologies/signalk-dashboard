@@ -17,7 +17,8 @@
 - Board switch with grafana-kiosk: the service restarts after the yaml is written - before, the restart could run while the remote write was still in progress.
 
 ### Refactor
-- One remote mechanism: commands, the grafana-kiosk yaml (sftp) and the screen brightness use a single ssh2 connection to the kiosk host instead of `ssh` client processes plus a separate ssh2 login. The *Remote command* is parsed (`ssh [-p port] [-i key file] [-l user] [user@]host`, `ssh://user@host:port`); new option *SSH key file* (formerly `keyFile` in the JSON configuration, still used), defaulting to the keys of the user running SignalK or the ssh agent. The connection is closed on plugin stop and re-established on the next use.
+- One remote mechanism: commands, the grafana-kiosk yaml (sftp) and the screen brightness use a single ssh2 connection to the kiosk host instead of `ssh` client processes plus a separate ssh2 login. The connection is closed on plugin stop and re-established on the next use.
+- Explicit remote login: *Remote host* (`user@host`), *SSH port* and *SSH key file* (formerly `keyFile` in the JSON configuration, still used) - no default keys, users or ssh agent; a remote host without user or key file, an unreadable key or a key with passphrase is reported as error and no screen command runs. The former *Remote command* `ssh [-p port] [-i key file] user@host` keeps working, other ssh options are rejected.
 
 ### Feature
 - Sunrise / sunset preferably from the derived-data plugin (computed from position and time).
