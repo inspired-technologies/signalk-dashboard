@@ -83,7 +83,9 @@ describe('plugin lifecycle', () => {
     assert.deepEqual(app.statuses.slice(0, 1), ['starting']);
     await waitFor(() => app.subscription !== null, 'subscription to be registered');
 
-    assert.deepEqual(app.statuses, ['starting', 'Initialized', 'Started']);
+    assert.deepEqual(app.statuses.slice(0, 2), ['starting', 'Initialized']);
+    assert.match(app.statuses[2], /^Started - metadata published \d\d:\d\d$/);
+    assert.equal(app.statuses.length, 3);
     assert.deepEqual(app.errors, []);
     // an existing path configuration is used as is
     assert.deepEqual(app.savedOptions, []);

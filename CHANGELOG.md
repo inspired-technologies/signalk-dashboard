@@ -13,6 +13,8 @@
 - Stopping the plugin during the InfluxDB health check or the start delay no longer starts the subscription afterwards.
 - Sunrise / sunset are uploaded when they change, otherwise hourly - since the shared influx update only once per start (before: on every upload tick).
 - Empty object values are no longer uploaded.
+- Dashboard metadata (buckets, hosts, vessel, measurement labels) went missing on boards with a time range shorter than the bucket retention: the descriptions were only republished close to the retention (24 h by default), only when deltas came in, and since the shared influx update with their original timestamp. Now fresh description points are published on start and hourly (at least four times per retention), independent of incoming data; the plugin state shows when they were last published and which vessel data is missing.
+- Sample dashboards: metadata is looked up over a fixed window (hidden constant `metawindow`, 7 days) instead of the selected time range - measurement queries keep the selected range; no hard-coded data source UIDs or bucket names (`${datasource}`, `${signalk}`).
 - Remote kiosk status check: `$2` of the `awk` filter was expanded by the local shell around `ssh`, so the status of a running grafana-kiosk was never `active` and the service was not restarted on plugin start.
 - Board switch with grafana-kiosk: the service restarts after the yaml is written - before, the restart could run while the remote write was still in progress.
 

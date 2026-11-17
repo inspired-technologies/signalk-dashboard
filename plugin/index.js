@@ -29,6 +29,7 @@ const SUN_SOURCE = 'derived-data'           // signalk-derived-data computes sun
 const SUN_UPLOAD = 60 * 60 * 1000           // sunrise / sunset uploaded on change, otherwise hourly
 const BACKLIGHT_CHECK = 10 * 60 * 1000      // backlight read back - restored when something else changed it
 const START_DELAY = 5000                    // kiosk launch and first upload after start
+const DESCRIPTION_REFRESH = 60 * 60 * 1000  // descriptions republished hourly, at least four times per retention
 
 const config = [
   { metric: "label.vessel.description.name", path: "name" },
@@ -78,7 +79,8 @@ function sunTime(selfPath) {
 
 module.exports = (app) => {
   let metrics = []
-  let descriptions = []
+  let pluginSettings = {}     // plugin options of the current start - descriptions are rebuilt from them
+  let published               // last description upload: { time, missing }
   let unsubscribes = []
   let influxConfig = {}
   let screenConfig = {}
@@ -128,11 +130,13 @@ module.exports = (app) => {
     startTimers.push(timer)
   }
 
-  // offline cache on the plugin state - from half of a limit (or once data was dropped) as error
+  // offline cache and last description upload on the plugin state - from half of a cache limit (or once data was dropped) as error
   function reportCache() {
     const state = cache.usage(influxConfig.cacheDir)
-    const message = state.files===0 ? 'Started' :
-      (state.warning ? `Influx writes failing - offline cache ${state.message}` : `Started - offline cache ${state.message}`)
+    const meta = !published ? '' : ` - metadata published ${published.time.toLocal().toFormat('HH:mm')}` +
+      (published.missing.length>0 ? ` (no vessel ${published.missing.join(' / ')})` : '')
+    const message = state.files===0 ? `Started${meta}` :
+      (state.warning ? `Influx writes failing - offline cache ${state.message}` : `Started - offline cache ${state.message}${meta}`)
     if (message===reported)
       return
     reported = message
@@ -140,6 +144,56 @@ module.exports = (app) => {
       app.setPluginError(message)
     else
       app.setPluginStatus(message)
+  }
+
+  // host, bucket, vessel and measurement descriptions as new points of 'now' - queued points are never changed
+  function descriptionPoints(now) {
+    const points = []
+    const missing = []
+    const add = (metric, value) => {
+      if (value===undefined || value===null)
+        return
+      const point = influx.format(metric, value, now, '')
+      if (point!==null)
+        points.push(point)
+    }
+    hosts.forEach(h => add(h.metric, pluginSettings.hosts && pluginSettings.hosts[h.path]))
+    buckets.forEach(b => add(b.metric, pluginSettings.influx && pluginSettings.influx[b.path]))
+    config.forEach(c => {
+      const selfPath = app.getSelfPath(c.path)
+      const value = !c.hasOwnProperty("key") || !selfPath ? selfPath : selfPath[c.key]
+      if (value===undefined || value===null) {
+        missing.push(c.key ? 'callsign' : c.path)
+        return
+      }
+      add(c.metric, value)
+    })
+    ;(pluginSettings.descriptions || []).forEach(d => {
+      add(`label.${d.label}.description.${d.measurement}`, d.field)
+      const path = `type.${d.measurement}.label.${d.label}.description`
+      if (typeof d.min==='number') add(`${path}.min`, d.min)
+      if (typeof d.norm==='number') add(`${path}.norm`, d.norm)
+      if (typeof d.max==='number') add(`${path}.max`, d.max)
+    })
+    return { points, missing }
+  }
+
+  // republish interval - hourly, shorter for a retention below four hours
+  function descriptionInterval() {
+    const retention = Number(influxConfig.retention)
+    return retention>0 ? Math.min(DESCRIPTION_REFRESH, retention*3600*1000/4) : DESCRIPTION_REFRESH
+  }
+
+  // descriptions on start and then periodically, independent of incoming deltas
+  function publishDescriptions(now) {
+    if (published && now.toMillis() - published.time.toMillis() < descriptionInterval())
+      return []
+    const { points, missing } = descriptionPoints(now)
+    if (missing.length>0 && (!published || published.missing.join()!==missing.join()))
+      log(`No vessel ${missing.join(' / ')} found - not published as metadata`)
+    published = { time: now, missing }
+    log(`Publishing ${points.length} descriptions`)
+    return points
   }
 
   // last known sunrise / sunset - the server value may be missing for a while (source restarted, timeout)
@@ -224,6 +278,7 @@ module.exports = (app) => {
   }
 
   function uploadTick(influxDB) {
+    publishDescriptions(DateTime.utc()).forEach(p => metrics.push(p))
     if (metrics.length !== 0) {
       log(`Sending ${metrics.length} data points to be uploaded to influx`)
       influx.post(influxDB, metrics, influxConfig)
@@ -257,13 +312,6 @@ module.exports = (app) => {
       const values = !influxConfig.valueConfig[u.values[0].path] ? u.values[0].value :
           convert.toTarget(influxConfig.valueConfig[u.values[0].path].split('|>')[0], u.values[0].value, influxConfig.valueConfig[u.values[0].path].split('|>')[1]).value
       let timestamp = DateTime.fromISO(u.timestamp).toUTC()
-      // decide on descriptions to be updated
-      if (descriptions.length>0 && updateVal("descriptions", timestamp.toMillis(),
-          influxConfig.retention*3600*1000-2*influxConfig.frequency*1000))
-      {
-        descriptions.forEach(d => metrics.push(d))
-        updates["descriptions"] = DateTime.utc().toMillis()
-      }
       // decide on metrics to be recorded
       if (values!==null && updateVal(path, timestamp.toMillis(), 1000) && influxConfig.pathConfig[path]!=='ignore')
       {
@@ -307,25 +355,14 @@ module.exports = (app) => {
     app.setPluginStatus('Initialized');
     log('Plugin initialized - sending metrics');
 
-    config.forEach(c => {
-      let value = !c.hasOwnProperty("key") || !app.getSelfPath(c.path) ? app.getSelfPath(c.path) : app.getSelfPath(c.path)[c.key]
-      if (value===undefined || value===null) {
-        log(`No value for ${c.path} found, skipping config metric`)
-        return
-      }
-      const metric = influx.format(c.metric, value, DateTime.utc(), '')
-      if (metric!==null)
-        metrics.push(metric)
-    })
-
     later(started, () => {
-      // first upload: host, bucket, vessel and measurement descriptions - republished within the retention
+      // first upload: host, bucket, vessel and measurement descriptions - republished by the upload timer
+      publishDescriptions(DateTime.utc()).forEach(p => metrics.push(p))
       log(`Uploading ${metrics.length} data points to Influx`)
       if (metrics.length !== 0) {
         influx.post(influxDB, metrics, influxConfig)
-        metrics.forEach(m => descriptions.push(m))
+        influx.buffer(metrics)
       }
-      updates["descriptions"] = DateTime.utc().toMillis()
       metrics = []
 
       uploadTimer = setInterval(() => uploadTick(influxDB), influxConfig.frequency*1000)
@@ -343,8 +380,7 @@ module.exports = (app) => {
         },
         onDelta
       );
-      app.setPluginStatus('Started');
-      reported = 'Started'
+      reportCache()
       log('Plugin started');
     }, START_DELAY)
     return true
@@ -359,41 +395,14 @@ module.exports = (app) => {
       running = true
       const started = ++generation
       metrics = []
-      descriptions = []
+      pluginSettings = settings
+      published = undefined
       valueCache = {}
       updates = {}
       uploaded = {}
       currentState = undefined
       reported = ''
       backlightChecked = 0
-      // init Host & Bucket Metrics from settings
-      hosts.forEach(h => {
-        const metric = influx.format(h.metric, settings.hosts[h.path], DateTime.utc(), '')
-        if (metric!==null)
-          metrics.push(metric)
-      })
-      buckets.forEach(h => {
-        const metric = influx.format(h.metric, settings.influx[h.path], DateTime.utc(), '')
-        if (metric!==null)
-          metrics.push(metric)
-      })
-      const measurements = settings.descriptions || []
-      measurements.forEach(d => {
-        let path = `label.${d.label}.description.${d.measurement}`
-        let metric = influx.format(`${path}`, d.field, DateTime.utc(), '')
-        if (metric!==null)
-          metrics.push(metric)
-        path = `type.${d.measurement}.label.${d.label}.description`
-        metric = influx.format(`${path}.min`, d.min, DateTime.utc(), '')
-        if (typeof d.min==='number' && metric!==null)
-          metrics.push(metric)
-        metric = influx.format(`${path}.norm`, d.norm, DateTime.utc(), '')
-        if (typeof d.norm==='number' && metric!==null)
-          metrics.push(metric)
-        metric = influx.format(`${path}.max`, d.max, DateTime.utc(), '')
-        if (typeof d.max==='number' && metric!==null)
-          metrics.push(metric)
-      })
       // init Influx connection
       influxConfig = {
         id: app.getSelfPath('mmsi') ? app.getSelfPath('mmsi') : app.getSelfPath('uuid'),
