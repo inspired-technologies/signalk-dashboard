@@ -101,7 +101,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -221,7 +221,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -348,7 +348,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -469,7 +469,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -590,7 +590,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -710,7 +710,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -831,7 +831,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -965,7 +965,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -1087,7 +1087,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -1209,7 +1209,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -1341,7 +1341,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -1547,7 +1547,7 @@
           "alias": "$tag_host: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "mean",
@@ -1714,7 +1714,7 @@
           "alias": "$tag_host: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "mean",
@@ -1895,7 +1895,7 @@
           "alias": "$tag_host: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "groupBy": [
@@ -2040,7 +2040,7 @@
           "alias": "$tag_host: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "mean",
@@ -2615,7 +2615,7 @@
           "alias": "$tag_host: $tag_interface: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "derivative",
@@ -3131,7 +3131,7 @@
           "alias": "$tag_host: $tag_interface: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "derivative",
@@ -3560,7 +3560,7 @@
           "alias": "$tag_host: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "mean",
@@ -3721,7 +3721,7 @@
           "alias": "$tag_host: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "mean",
@@ -3941,7 +3941,7 @@
           "alias": "$tag_host: $tag_name: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "mean",
@@ -4475,7 +4475,7 @@
           "alias": "$tag_host: $tag_name: $col",
           "datasource": {
             "type": "influxdb",
-            "uid": "ceblmlr77e134e"
+            "uid": "${datasource}"
           },
           "dsType": "influxdb",
           "function": "mean",
@@ -5102,10 +5102,7 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "text": "influxdb",
-          "value": "ceblmlr77e134e"
-        },
+        "current": {},
         "includeAll": false,
         "name": "datasource",
         "options": [],

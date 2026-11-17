@@ -192,7 +192,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "groupBy": [
             {
@@ -457,7 +457,7 @@
             "type": "influxdb",
             "uid": "${datasource}"
           },
-          "query": "from(bucket: \"signalk_metrics\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> last()\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n\r\n",
+          "query": "from(bucket: \"${signalk}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> last()\r\n  |> filter(fn: (r) => r[\"_field\"] == \"lat\" or r[\"_field\"] == \"lon\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> filter(fn: (r) => r.source =~ /^${sources:regex}/)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n\t|> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n\t|> filter(fn: (r) => exists r[\"lat\"] and exists r[\"lon\"])\r\n\r\n",
           "refId": "A"
         }
       ],
@@ -716,7 +716,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "groupBy": [
             {
@@ -829,7 +829,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "groupBy": [
             {
@@ -947,7 +947,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "groupBy": [
             {
@@ -1064,7 +1064,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "groupBy": [
             {
@@ -1181,7 +1181,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "groupBy": [
             {
@@ -1298,7 +1298,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "groupBy": [
             {
@@ -1427,7 +1427,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "de94d0a6y720wc"
+            "uid": "${datasource}"
           },
           "query": "from(bucket: \"${telegraf}\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temp\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"temp\")\r\n  |> filter(fn: (r) => r.host == \"${skhost}\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
@@ -1534,9 +1534,26 @@
     "list": [
       {
         "current": {
-          "text": "influxdb",
-          "value": "de94d0a6y720wc"
+          "text": "7d",
+          "value": "7d"
         },
+        "description": "Window for the metadata of the signalk-dashboard plugin (buckets, hosts, vessel, labels), independent of the selected time range",
+        "hide": 2,
+        "label": "Metadata window",
+        "name": "metawindow",
+        "options": [
+          {
+            "selected": true,
+            "text": "7d",
+            "value": "7d"
+          }
+        ],
+        "query": "7d",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "current": {},
         "description": "",
         "hide": 2,
         "name": "datasource",
@@ -1555,12 +1572,12 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()",
         "hide": 2,
         "name": "signalk",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()"
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()"
         },
         "refresh": 2,
         "regex": "",
@@ -1573,14 +1590,14 @@
         },
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"telegraf\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"telegraf\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()",
         "hide": 2,
         "name": "telegraf",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"telegraf\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()"
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"telegraf\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"bucket\")\r\n  |> last()"
         },
         "refresh": 2,
         "regex": "",
@@ -1595,13 +1612,13 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
         "description": "",
         "hide": 2,
         "name": "skhost",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()"
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"signalk\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()"
         },
         "refresh": 2,
         "regex": "",
@@ -1616,13 +1633,13 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"influx\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"influx\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
         "description": "",
         "hide": 2,
         "name": "fhost",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"influx\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()"
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"influx\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()"
         },
         "refresh": 2,
         "regex": "",
@@ -1637,13 +1654,13 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
         "hide": 2,
         "name": "hosts",
         "options": [],
         "query": {
           "maxDataPoints": 10,
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"host\")\r\n  |> last()",
           "refId": "InfluxVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -1657,9 +1674,9 @@
         },
         "datasource": {
           "type": "influxdb",
-          "uid": "de94d0a6y720wc"
+          "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"name\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> last()",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"name\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> last()",
         "description": "Name of the vessel monitored",
         "hide": 1,
         "label": "Vessel",
@@ -1667,7 +1684,7 @@
         "options": [],
         "query": {
           "maxDataPoints": 1,
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"name\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> last()",
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"description\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"name\")\r\n  |> filter(fn: (r) => r[\"label\"] == \"vessel\")\r\n  |> last()",
           "refId": "InfluxVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -1683,13 +1700,13 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r._measurement == \"description\")\r\n  |> keep(columns: [\"id\"])\r\n  |> distinct(column: \"id\")",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r._measurement == \"description\")\r\n  |> keep(columns: [\"id\"])\r\n  |> distinct(column: \"id\")",
         "description": "",
         "label": "MMSI",
         "name": "mmsi",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r._measurement == \"description\")\r\n  |> keep(columns: [\"id\"])\r\n  |> distinct(column: \"id\")"
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r._measurement == \"description\")\r\n  |> keep(columns: [\"id\"])\r\n  |> distinct(column: \"id\")"
         },
         "refresh": 2,
         "regex": "",
@@ -1704,13 +1721,13 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()",
+        "definition": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()",
         "description": "Vessel state",
         "label": "State",
         "name": "state",
         "options": [],
         "query": {
-          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()"
+          "query": "from(bucket: v.defaultBucket)\r\n  |> range(start: -${metawindow})\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"position\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> filter(fn: (r) => r[\"id\"] == \"${mmsi}\")\r\n  |> last()"
         },
         "refresh": 2,
         "regex": "",
