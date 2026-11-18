@@ -192,6 +192,14 @@ Nothing is assumed: without user, key file or with an unreadable key the plugin 
 
 Commands run on the kiosk host as written (no local shell in between); the host key fingerprint is logged with the *Debug log* of the plugin.
 
+Recommendations and notes for the kiosk host:
+- *Chromium tabs*: boards are switched with `wtype -M ctrl -P Tab`, which needs the Wayland session of the desktop user (`WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`). Commands over ssh do not get that environment by default - log in as the desktop user and make both variables available to its ssh commands (eg. `~/.ssh/environment` with `PermitUserEnvironment yes` in the sshd configuration). Test from the SignalK host with `ssh -i <key file> user@host "wtype -M ctrl -P Tab"`.
+- *grafana-kiosk*: the plugin reads and writes the kiosk yaml (the path given as Chromium parameter) over SFTP as the login user, which therefore needs write access to it.
+- *sudo*: the service restart (`sudo systemctl restart|start|status <service>`) and the brightness (`sudo tee /sys/class/backlight/*/brightness`) run without a terminal, so sudo must not ask for a password - locally for the user running SignalK, remote for the login user. Raspberry Pi OS allows this for its first user; for other users add a sudoers entry for these commands.
+- *Start order*: the kiosk is launched once when the plugin starts. If the kiosk host is not reachable then (eg. both hosts power up together and the kiosk host boots slower), the plugin reports an error and board switching stays off until the plugin is restarted - start the kiosk host first or restart the plugin once it is up. The brightness is retried with every interval.
+- *Connection loss* (kiosk host restarted, network drop): the connection is established again with the next command; a dead connection is detected by a keepalive every 30 s. A board switch that fails meanwhile is not repeated - the kiosk keeps the previous board until the next navigation state change.
+- *One connection*: on the kiosk host `ss -tn state established '( sport = :22 )'` shows a single connection from the SignalK host. Messages like `channel open failed` in the sshd log (`journalctl -u ssh`) point to more parallel commands than the sshd `MaxSessions` allows.
+
 2. Chromium
 
 Variety of parameters may change depending on version - the following represent a working example for `latest chromium` on `bookworm`  
