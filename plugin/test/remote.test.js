@@ -244,6 +244,48 @@ describe('remote execution over ssh2', () => {
     assert.equal(host.options[0].port, 2222);
   });
 
+  for (const browser of ['chromium', 'chromium-browser']) {
+    it(`grafana: ${browser} opens one tab per board, switches tabs and keeps the configuration`, async (t) => {
+      t.mock.timers.enable({ apis: ['setTimeout'] });
+      connect();
+      host.results = { 'pgrep chromium': { stdout: '1234\n' } };
+      const statuses = [];
+      const config = {
+        autostart: true,
+        launch: { command: browser, remote: 'pi@kiosk', keyFile, params: '--kiosk' },
+        dashboard: { server: 'http://grafana', idle: 'idle' },
+        boards: [{ state: 'sailing', uid: 'sail' }],
+      };
+      assert.ok(grafana.init(config, null, (s) => statuses.push(s), (e) => statuses.push(`error ${e}`)));
+      assert.equal(config.launch.command, browser);
+
+      const launched = new Promise((resolve) => grafana.launch('', resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(host.commands[0], `nohup ${browser} 'http://grafana/d/idle?kiosk' 'http://grafana/d/sail?kiosk' --kiosk >/dev/null 2>&1 </dev/null &`);
+      t.mock.timers.tick(15000);
+      assert.equal(await launched, '1234');
+      assert.equal(host.commands[1], 'pgrep chromium | head -1');
+      assert.deepEqual(statuses, [`Started: ${browser} 1234 2 tab(s)`]);
+
+      await new Promise((resolve) => grafana.next('sailing', resolve));
+      assert.equal(host.commands.at(-1), 'wtype -M ctrl -P Tab');
+      grafana.stop();
+    });
+  }
+
+  it('grafana: chromium without boards opens the default board only', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    connect();
+    grafana.init({
+      launch: { command: 'chromium', remote: 'pi@kiosk', keyFile },
+      dashboard: { server: 'http://grafana', idle: 'idle', params: 'orgId=1' },
+    }, null, () => {}, () => {});
+    grafana.launch('', () => {});
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(host.commands[0], "nohup chromium 'http://grafana/d/idle?kiosk&orgId=1'  >/dev/null 2>&1 </dev/null &");
+    grafana.stop();
+  });
+
   it('grafana: remote host without key file reported, no launch and no local brightness', async () => {
     const errors = [];
     const ok = grafana.init({
