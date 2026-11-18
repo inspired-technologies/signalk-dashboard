@@ -461,6 +461,7 @@ module.exports = (app) => {
       screenTimer && clearInterval(screenTimer);
       uploadTimer = undefined
       screenTimer = undefined
+      grafana.stop()
       // persist any metrics still buffered, also when influx was never configured
       metrics = influx.flush(metrics, influxConfig.cacheDir ? influxConfig.cacheDir : app.getDataDirPath());
       log("stopped");
@@ -563,20 +564,31 @@ module.exports = (app) => {
                   command: {
                     type: 'string',
                     title: 'Launch command',
-                    description: 'base command: chromium-browser or grafana-kiosk',
-                    enum: ["chromium-browser", "grafana-kiosk"],
+                    description: 'base command: chromium (Debian 13 Trixie), chromium-browser (Debian 12 Bookworm) or grafana-kiosk',
+                    enum: ["chromium", "chromium-browser", "grafana-kiosk"],
                     default: ''
                   },                  
                   remote: {
                     type: 'string',
-                    title: 'Remote command',
-                    description: 'remote execution, pwd-free login required',
+                    title: 'Remote host',
+                    description: 'ssh login of the kiosk host as user@host - empty: kiosk on the SignalK host',
                     default: ''
-                  }, 
+                  },
+                  port: {
+                    type: 'number',
+                    title: 'SSH port',
+                    description: 'ssh port of the remote host - empty: 22'
+                  },
+                  keyFile: {
+                    type: 'string',
+                    title: 'SSH key file',
+                    description: 'private key of the remote login, required for a remote host - keys with passphrase are not supported',
+                    default: ''
+                  },
                   params: {
                     type: 'string',
                     title: 'Configuration params',
-                    description: 'command params resp. full path to config-file',
+                    description: 'chromium: browser options (eg. --kiosk --noerrdialogs --ozone-platform=wayland); grafana-kiosk: full path of its yaml configuration',
                     default: ''
                   },                    
                 }

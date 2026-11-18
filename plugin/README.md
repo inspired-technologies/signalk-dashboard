@@ -10,8 +10,10 @@ Consider this plugin if you have at least one RaspberryPi connected to a screen 
 
 ### Prerequisites
 
-- RaspberryPi 3/4/5 64bit Bullseye or Bookworm OS with minimal desktop enabled or chromium browser installed  
+- RaspberryPi 3/4/5 64bit with Raspberry Pi OS Trixie (Debian 13) or Bookworm (Debian 12) and minimal desktop enabled or chromium browser installed - the browser command is `chromium` on Trixie and `chromium-browser` on Bookworm (*Launch command* of the plugin accordingly)  
 *Note: Alternative browsers, likewise Firefox may be possible to be configure, but have not been tested*
+- Additional packages on the kiosk host: `sudo apt install wtype procps fontconfig fontconfig-config fonts-dejavu-core`  
+*Note: `wtype` switches the chromium tabs, `pgrep` (package `procps`) finds the running browser, fontconfig and the DejaVu fonts are needed by chromium on a minimal installation (also for grafana-kiosk)*
 - SignalK Server (v2.x) installed and configured
 - InfluxDB (v1.8.x or v2.7.x) - for details see next section
 *Note: For InfluxDB v3 (aka Influx Edge) has been recently made available as alpha-version for development and will be made available at at a later stage*
@@ -74,9 +76,9 @@ The telegraf service is not required to be configured, but can provide useful mo
 
 ### Chromium browser cli test
 
-In order to verify that installation and configuration was successful run the following command in bash using a ssh shell login to your RPi:
+In order to verify that installation and configuration was successful run the following command in bash using a ssh shell login to your RPi (on Bookworm `chromium-browser` instead of `chromium`):
 ```
-chromium-browser "https://time.is/Berlin" "http://localhost:port/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m" --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized & 
+chromium "https://time.is/Berlin" "http://localhost:port/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m" --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized & 
 ```
 *Note: Tests have been with Raspberry OS configured to wayland backend with labwc instead of X11 or Wayfire, but any other configuration might work fine as well.*
 This should load the RPi Monitor Dashboard in full screen and Grafana in Kiosk mode like this:
@@ -182,20 +184,24 @@ In case Grafana and SignalK services not running on the same host also remote ex
 | ----------- | ------------ |
 | ![Host Configuration](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/host-config.png) | ![Remote Exec](https://github.com/inspired-technologies/signalk-dashboard/blob/main/img/remote-exec.png) |
 
-In addition add the path to the appropriate keyfile to the plugin configuration within :
-```
-...
-"grafana": {
-  ...
-  "launch": {
-    ...
-     "keyFile": "/home/pi/.ssh/id_rsa"
-    ...
-  },
-  ...
-},
-...
-```
+All remote actions - launching the kiosk, switching boards, the grafana-kiosk yaml and the screen brightness - use one ssh connection of the plugin (ssh2), no `ssh` client process:
+- *Remote host*: the login of the kiosk host as `user@host`, eg. `pi@kiosk`. Empty: the kiosk runs on the SignalK host.
+- *SSH port*: empty for 22.
+- *SSH key file*: the private key for the login, eg. `/home/pi/.ssh/id_ed25519` - required for a remote host (formerly `keyFile`, edited in the JSON configuration - still used).
+
+Nothing is assumed: without user, key file or with an unreadable key the plugin reports an error and runs no screen command. A former remote command `ssh [-p <port>] [-i <key file>] user@host` keeps working; *SSH port* and *SSH key file* take precedence, other ssh options are rejected.
+
+*Note: keys with a passphrase are not supported for the remote login at this time.* The plugin runs unattended - a passphrase would have to be stored in the plugin configuration or entered into an ssh agent after every boot. Create a dedicated key without passphrase for the kiosk login (see __[public key authentication](./pubkey.md)__) and keep it readable for the user running SignalK only (`chmod 600`).
+
+Commands run on the kiosk host as written (no local shell in between); the host key fingerprint is logged with the *Debug log* of the plugin.
+
+Recommendations and notes for the kiosk host:
+- *Chromium tabs*: boards are switched with `wtype -M ctrl -P Tab`, which needs the Wayland session of the desktop user (`WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`). Commands over ssh do not get that environment by default - log in as the desktop user and make both variables available to its ssh commands (eg. `~/.ssh/environment` with `PermitUserEnvironment yes` in the sshd configuration). Test from the SignalK host with `ssh -i <key file> user@host "wtype -M ctrl -P Tab"`.
+- *grafana-kiosk*: the plugin reads and writes the kiosk yaml (the path given as Chromium parameter) over SFTP as the login user, which therefore needs write access to it.
+- *sudo*: the service restart (`sudo systemctl restart|start|status <service>`) and the brightness (`sudo tee /sys/class/backlight/*/brightness`) run without a terminal, so sudo must not ask for a password - locally for the user running SignalK, remote for the login user. Raspberry Pi OS allows this for its first user; for other users add a sudoers entry for these commands.
+- *Start order*: the kiosk is launched once when the plugin starts. If the kiosk host is not reachable then (eg. both hosts power up together and the kiosk host boots slower), the plugin reports an error and board switching stays off until the plugin is restarted - start the kiosk host first or restart the plugin once it is up. The brightness is retried with every interval.
+- *Connection loss* (kiosk host restarted, network drop): the connection is established again with the next command; a dead connection is detected by a keepalive every 30 s. A board switch that fails meanwhile is not repeated - the kiosk keeps the previous board until the next navigation state change.
+- *One connection*: on the kiosk host `ss -tn state established '( sport = :22 )'` shows a single connection from the SignalK host. Messages like `channel open failed` in the sshd log (`journalctl -u ssh`) point to more parallel commands than the sshd `MaxSessions` allows.
 
 2. Chromium
 
@@ -204,7 +210,7 @@ Variety of parameters may change depending on version - the following represent 
 --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized
 ```
 
-*Note: in case grafana-kiosk is selected no specific chromium configuration needs to be done here - just specify the full path to the kiosk-configuration yaml file as param*
+*Note: in case grafana-kiosk is selected no specific chromium configuration needs to be done here - just specify the full path to the kiosk-configuration yaml file as param. The plugin checks this on start: a yaml file as *Configuration params* of `chromium` / `chromium-browser`, or anything else than a yaml file with `grafana-kiosk`, is reported as plugin error and the kiosk is not launched.*
 
 3. Dashboards
 
