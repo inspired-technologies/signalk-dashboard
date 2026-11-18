@@ -2,21 +2,7 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "signalk-board-sailing",
-    "namespace": "default",
-    "uid": "T5C2YXx2rJX7Y5e845HRPN4Qn3iMuRtGKdSuxqfTyG0X",
-    "resourceVersion": "1794929955262984",
-    "generation": 6,
-    "creationTimestamp": "2025-02-27T17:18:55Z",
-    "labels": {
-      "grafana.app/deprecatedInternalID": "30"
-    },
-    "annotations": {
-      "grafana.app/createdBy": "user:ce93cbicdcx6oe",
-      "grafana.app/saved-from-ui": "Grafana v13.2.3 (90ffed056f)",
-      "grafana.app/updatedBy": "user:ce93cbicdcx6oe",
-      "grafana.app/updatedTimestamp": "2026-11-17T15:39:15Z"
-    }
+    "name": "signalk-board-sailing"
   },
   "spec": {
     "annotations": [
@@ -2089,8 +2075,8 @@
         "spec": {
           "name": "signalk",
           "current": {
-            "text": "signalk_metrics",
-            "value": "signalk_metrics"
+            "text": "",
+            "value": ""
           },
           "hide": "hideVariable",
           "refresh": "onTimeRangeChanged",
@@ -2121,8 +2107,8 @@
         "spec": {
           "name": "telegraf",
           "current": {
-            "text": "infra_metrics",
-            "value": "infra_metrics"
+            "text": "",
+            "value": ""
           },
           "hide": "hideVariable",
           "refresh": "onTimeRangeChanged",
@@ -2153,8 +2139,8 @@
         "spec": {
           "name": "skhost",
           "current": {
-            "text": "sdevpi",
-            "value": "sdevpi"
+            "text": "",
+            "value": ""
           },
           "hide": "hideVariable",
           "refresh": "onTimeRangeChanged",
@@ -2185,8 +2171,8 @@
         "spec": {
           "name": "fhost",
           "current": {
-            "text": "fluxpi",
-            "value": "fluxpi"
+            "text": "",
+            "value": ""
           },
           "hide": "hideVariable",
           "refresh": "onTimeRangeChanged",
@@ -2217,8 +2203,8 @@
         "spec": {
           "name": "hosts",
           "current": {
-            "text": "fluxpi",
-            "value": "fluxpi"
+            "text": "",
+            "value": ""
           },
           "hide": "hideVariable",
           "refresh": "onTimeRangeChanged",
@@ -2251,8 +2237,8 @@
         "spec": {
           "name": "vessel",
           "current": {
-            "text": "SIRIUS (D)",
-            "value": "SIRIUS (D)"
+            "text": "",
+            "value": ""
           },
           "label": "Vessel",
           "hide": "hideLabel",
@@ -2287,8 +2273,8 @@
         "spec": {
           "name": "mmsi",
           "current": {
-            "text": "211284872",
-            "value": "211284872"
+            "text": "",
+            "value": ""
           },
           "label": "MMSI",
           "hide": "dontHide",
@@ -2320,8 +2306,8 @@
         "spec": {
           "name": "state",
           "current": {
-            "text": "moored",
-            "value": "moored"
+            "text": "",
+            "value": ""
           },
           "label": "State",
           "hide": "dontHide",
