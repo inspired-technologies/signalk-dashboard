@@ -18,6 +18,7 @@
 - Remote kiosk status check: `$2` of the `awk` filter was expanded by the local shell around `ssh`, so the status of a running grafana-kiosk was never `active` and the service was not restarted on plugin start.
 - Board switch with grafana-kiosk: the service restarts after the yaml is written - before, the restart could run while the remote write was still in progress.
 - *Launch command* `chromium` for Raspberry Pi OS Trixie (Debian 13), next to `chromium-browser` (Bookworm); with boards per navigation state the plugin configuration is no longer rewritten to `chromium-tabbed`. The README lists the packages needed on the kiosk host (`wtype`, `procps`, fontconfig and DejaVu fonts).
+- Launch configuration checked on start: a grafana-kiosk yaml as *Configuration params* of chromium, or no yaml with grafana-kiosk, is reported as plugin error instead of opening the yaml as a browser tab or writing board URLs into another file.
 
 ### Refactor
 - One remote mechanism: commands, the grafana-kiosk yaml (sftp) and the screen brightness use a single ssh2 connection to the kiosk host instead of `ssh` client processes plus a separate ssh2 login. The connection is closed on plugin stop and re-established on the next use.

@@ -209,7 +209,7 @@ Variety of parameters may change depending on version - the following represent 
 --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized
 ```
 
-*Note: in case grafana-kiosk is selected no specific chromium configuration needs to be done here - just specify the full path to the kiosk-configuration yaml file as param*
+*Note: in case grafana-kiosk is selected no specific chromium configuration needs to be done here - just specify the full path to the kiosk-configuration yaml file as param. The plugin checks this on start: a yaml file as *Configuration params* of `chromium` / `chromium-browser`, or anything else than a yaml file with `grafana-kiosk`, is reported as plugin error and the kiosk is not launched.*
 
 3. Dashboards
 
