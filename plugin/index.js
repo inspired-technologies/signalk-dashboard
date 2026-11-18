@@ -564,8 +564,8 @@ module.exports = (app) => {
                   command: {
                     type: 'string',
                     title: 'Launch command',
-                    description: 'base command: chromium-browser or grafana-kiosk',
-                    enum: ["chromium-browser", "grafana-kiosk"],
+                    description: 'base command: chromium (Debian 13 Trixie), chromium-browser (Debian 12 Bookworm) or grafana-kiosk',
+                    enum: ["chromium", "chromium-browser", "grafana-kiosk"],
                     default: ''
                   },                  
                   remote: {

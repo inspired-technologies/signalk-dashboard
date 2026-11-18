@@ -12,8 +12,9 @@ const checkkiosk = "sudo systemctl status grafana-kiosk | grep 'Active:' | awk '
 const closebrowser = "kill {pid}"
 const setbrightness = "echo {val} | sudo tee /sys/class/backlight/*/brightness"
 const getbrightness = "cat /sys/class/backlight/*/brightness | head -1"
-const chromium = "chromium-browser {uri} {params}"
-const tabbed  = "chromium-browser [tabs] {params}"
+const BROWSERS = ["chromium", "chromium-browser"]  // launch command of Debian 13 Trixie / Debian 12 Bookworm
+const chromium = "{browser} {uri} {params}"
+const tabbed  = "{browser} [tabs] {params}"
 const nexttab = "wtype -M ctrl -P Tab"
 const kiosk = "sudo systemctl restart {service}"
 const background = "nohup {cmd} >/dev/null 2>&1 </dev/null &"
@@ -53,10 +54,14 @@ function init (config, logger, set, error) {
             id: config.dashboard.idle,
             params: config.dashboard.params
         }
+        // chromium with boards per navigation state opens one tab per board - the configuration stays as it is
+        const browser = BROWSERS.includes(config.launch.command) ? config.launch.command : undefined
+        const params = config.launch.params || ''
+        let mode = browser ? "chromium" : config.launch.command
         if (config.boards && config.boards.length>0)
         {
-            if (config.launch.command.includes('chromium'))
-                config.launch.command = "chromium-tabbed"
+            if (browser)
+                mode = "chromium-tabbed"
             let i=1
             config.boards.forEach(b => {
                 boards[b.state] = {
@@ -66,18 +71,18 @@ function init (config, logger, set, error) {
                 }
             })
         }
-        switch (config.launch.command)
+        switch (mode)
         {
-            case "chromium-browser":
+            case "chromium":
                 let url = `'${config.dashboard.server}/d/${boards.default.id}?kiosk${(boards.default.params ? `&${boards.default.params}` : '')}'`
-                command = chromium.replace("{uri}", url).replace("{params}", config.launch.params)
+                command = chromium.replace("{browser}", browser).replace("{uri}", url).replace("{params}", params)
                 break;
             case "chromium-tabbed":
                 let urls = []
                 Object.keys(boards).forEach(b => {
                     urls.push(`'${config.dashboard.server}/d/${boards[b].id}?kiosk${(boards[b].params ? `&${boards[b].params}` : '')}'`)
                 })
-                command = tabbed.replace("[tabs]", urls.join(' ')).replace("{params}", config.launch.params)
+                command = tabbed.replace("{browser}", browser).replace("[tabs]", urls.join(' ')).replace("{params}", params)
                 break;
             case "grafana-kiosk":
                 configFile = config.launch.params
@@ -110,7 +115,7 @@ function check(msg, callback) {
 
 function launch (status, callback) {
     if (status==='') {
-        let msg = command.includes("chromium") ? chromium.replace("uri","pid").replace("{params}",`${Object.keys(boards).length} tab(s)`) : kiosk
+        let msg = command.includes("chromium") ? `${command.split(" ")[0]} {pid} ${Object.keys(boards).length} tab(s)` : kiosk
         setTimeout( () => {
             check(msg, callback)
             current.board = 0
