@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [0.7.0]
 
 ### Fix
 - Screen brightness follows sunrise and sunset of the local day (time zone of the SignalK host): the times of day are placed on today's date, so sources publishing different days (OpenWeather: local day of the position, Open-Meteo: UTC day) or updating sunrise and sunset at different times no longer switch to daytime brightness at night.
