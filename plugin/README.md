@@ -10,8 +10,10 @@ Consider this plugin if you have at least one RaspberryPi connected to a screen 
 
 ### Prerequisites
 
-- RaspberryPi 3/4/5 64bit Bullseye or Bookworm OS with minimal desktop enabled or chromium browser installed  
+- RaspberryPi 3/4/5 64bit with Raspberry Pi OS Trixie (Debian 13) or Bookworm (Debian 12) and minimal desktop enabled or chromium browser installed - the browser command is `chromium` on Trixie and `chromium-browser` on Bookworm (*Launch command* of the plugin accordingly)  
 *Note: Alternative browsers, likewise Firefox may be possible to be configure, but have not been tested*
+- Additional packages on the kiosk host: `sudo apt install wtype procps fontconfig fontconfig-config fonts-dejavu-core`  
+*Note: `wtype` switches the chromium tabs, `pgrep` (package `procps`) finds the running browser, fontconfig and the DejaVu fonts are needed by chromium on a minimal installation (also for grafana-kiosk)*
 - SignalK Server (v2.x) installed and configured
 - InfluxDB (v1.8.x or v2.7.x) - for details see next section
 *Note: For InfluxDB v3 (aka Influx Edge) has been recently made available as alpha-version for development and will be made available at at a later stage*
@@ -73,9 +75,9 @@ The telegraf service is not required to be configured, but can provide useful mo
 
 ### Chromium browser cli test
 
-In order to verify that installation and configuration was successful run the following command in bash using a ssh shell login to your RPi:
+In order to verify that installation and configuration was successful run the following command in bash using a ssh shell login to your RPi (on Bookworm `chromium-browser` instead of `chromium`):
 ```
-chromium-browser "https://time.is/Berlin" "http://localhost:port/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m" --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized & 
+chromium "https://time.is/Berlin" "http://localhost:port/d/rpi-monitor/rpi-monitoring?kiosk&orgId=1&timezone=Europe%2FBerlin&refresh=5m" --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --enable-features=OverlayScrollbar --start-maximized & 
 ```
 *Note: Tests have been with Raspberry OS configured to wayland backend with labwc instead of X11 or Wayfire, but any other configuration might work fine as well.*
 This should load the RPi Monitor Dashboard in full screen and Grafana in Kiosk mode like this:
