@@ -286,6 +286,44 @@ describe('remote execution over ssh2', () => {
     grafana.stop();
   });
 
+  const launchWith = (command, params, autostart = true) => {
+    const errors = [];
+    const ok = grafana.init({
+      autostart,
+      launch: { command, remote: 'pi@kiosk', keyFile, params },
+      dashboard: { server: 'http://grafana', idle: 'idle' },
+      boards: [{ state: 'sailing', uid: 'sail' }],
+    }, null, () => {}, (e) => errors.push(e));
+    return { ok, errors };
+  };
+
+  it('grafana: chromium with a grafana-kiosk yaml as params reported, no launch', async () => {
+    connect();
+    for (const params of ['/home/pi/config/board/dashboard.yaml', "--kiosk '/home/pi/kiosk.yml'"]) {
+      const { ok, errors } = launchWith('chromium', params);
+      assert.equal(ok, false);
+      assert.match(errors[0], /launch configuration - chromium expects browser options as Configuration params .*not the grafana-kiosk configuration/);
+    }
+    // not launched - no error on the plugin state, only logged
+    assert.deepEqual(launchWith('chromium-browser', '/home/pi/kiosk.yaml', false), { ok: false, errors: [] });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(host.commands, []);
+    // browser options are fine
+    assert.equal(launchWith('chromium', '--kiosk --noerrdialogs --ozone-platform=wayland').ok, true);
+  });
+
+  it('grafana: grafana-kiosk without a yaml as params reported, kiosk yaml untouched', async () => {
+    connect();
+    for (const params of ['', '--kiosk --noerrdialogs', '/home/pi/kiosk.conf']) {
+      const { ok, errors } = launchWith('grafana-kiosk', params);
+      assert.equal(ok, false);
+      assert.match(errors[0], /launch configuration - grafana-kiosk expects the path of its yaml configuration/);
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(host.files, {});
+    assert.deepEqual(host.commands, []);
+  });
+
   it('grafana: remote host without key file reported, no launch and no local brightness', async () => {
     const errors = [];
     const ok = grafana.init({
