@@ -588,7 +588,7 @@ module.exports = (app) => {
                   params: {
                     type: 'string',
                     title: 'Configuration params',
-                    description: 'command params resp. full path to config-file',
+                    description: 'chromium: browser options (eg. --kiosk --noerrdialogs --ozone-platform=wayland); grafana-kiosk: full path of its yaml configuration',
                     default: ''
                   },                    
                 }

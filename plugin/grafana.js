@@ -33,6 +33,22 @@ function failed (error, stderr) {
     err( `exec error: ${error ? error : stderr}` );
 }
 
+// Configuration params: browser options for chromium, the path of its yaml configuration for grafana-kiosk -
+// a yaml with chromium (or options with grafana-kiosk) is a mix-up of the two launch modes
+const YAML = /\.ya?ml$/i
+function paramsError (cmd, params) {
+    const value = params.trim()
+    if (BROWSERS.includes(cmd)) {
+        const file = value.split(/\s+/).find(t => YAML.test(t.replace(/^['"]|['"]$/g, '')))
+        if (file)
+            return `${cmd} expects browser options as Configuration params (eg. --kiosk --noerrdialogs), not the grafana-kiosk configuration ${file}`
+    } else if (cmd==='grafana-kiosk') {
+        if (!YAML.test(value) || value.startsWith('-'))
+            return `grafana-kiosk expects the path of its yaml configuration as Configuration params${value ? `, not '${value}'` : ''}`
+    }
+    return null
+}
+
 function init (config, logger, set, error) {
     // store content to file
     setStatus = set
@@ -57,6 +73,14 @@ function init (config, logger, set, error) {
         // chromium with boards per navigation state opens one tab per board - the configuration stays as it is
         const browser = BROWSERS.includes(config.launch.command) ? config.launch.command : undefined
         const params = config.launch.params || ''
+        const misconfig = paramsError(config.launch.command, params)
+        if (misconfig) {
+            if (config.autostart)
+                failed(`launch configuration - ${misconfig}`)
+            else
+                log(`Launch configuration - ${misconfig}`)
+            return false
+        }
         let mode = browser ? "chromium" : config.launch.command
         if (config.boards && config.boards.length>0)
         {
