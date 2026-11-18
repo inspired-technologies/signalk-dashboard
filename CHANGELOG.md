@@ -29,6 +29,7 @@
 - SignalK Plugin CI runs in `plugin/` (`repository.directory`), the change log moved from the README to `CHANGELOG.md`.
 - npm release via trusted publishing (OIDC) instead of an npm token; `engines`, `signalk.displayName` and a `files` list in package.json.
 - The grafana-kiosk binary is no longer kept in the repository - [kiosk.md](plugin/kiosk.md) describes how to install the latest release.
+- Sample dashboards updated and exported from Grafana 13 in the v2 dashboard format (Grafana 11.x cannot import them), without instance data or saved variable values.
 
 ## [0.6.2]
 - Package updates.

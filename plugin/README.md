@@ -15,7 +15,8 @@ Consider this plugin if you have at least one RaspberryPi connected to a screen 
 - SignalK Server (v2.x) installed and configured
 - InfluxDB (v1.8.x or v2.7.x) - for details see next section
 *Note: For InfluxDB v3 (aka Influx Edge) has been recently made available as alpha-version for development and will be made available at at a later stage*
-- Grafana (v11.5.x)
+- Grafana (v13.x)
+*Note: the sample dashboards are in the Grafana v2 dashboard format - Grafana 11.x cannot import them, see __[Sample Dashboards](../README.md#sample-dashboards)__*
 - Telegraf (v1.33.x or similar, if compatibel with the InfluxDB version used)
 *Note: not required, but beneficial in case infra monitoring should be done*
 - SignalK AutoState Plugin (> v0.4)
